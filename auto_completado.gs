@@ -85,7 +85,7 @@ function getItemsMapping(form) {
   var map = {cedula: null, nombre: null, programa: null};
   for(var i=0; i<items.length; i++){
     var t = items[i].getTitle().toLowerCase();
-    if(t.indexOf("cedula") !== -1 || t.indexOf("cédula") !== -1) map.cedula = items[i];
+    if((t.indexOf("cedula") !== -1 || t.indexOf("cédula") !== -1) && !map.cedula) map.cedula = items[i];
     // Evitar atrapar campos de quien recibe o evalua
     else if(t.indexOf("nombre") !== -1 && t.indexOf("recibe") === -1 && t.indexOf("evaluador") === -1 && !map.nombre) map.nombre = items[i];
     else if(t.indexOf("programa") !== -1 && !map.programa) map.programa = items[i];
