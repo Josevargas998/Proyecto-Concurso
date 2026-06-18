@@ -20,12 +20,22 @@ PLANTILLA_2    = "2.docx"
 PLANTILLA_3    = "3.xlsx"
 
 from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
+import os.path
 
 def autenticar():
-    creds = Credentials.from_authorized_user_file("token.json",
-        ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+    SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    creds = None
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
     return build("sheets", "v4", credentials=creds), build("drive", "v3", credentials=creds)
 
 def col_num_to_letter(n):
