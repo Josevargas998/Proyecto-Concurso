@@ -19,7 +19,7 @@ function generarTodosLosEnlaces() {
   if(data.length < 2) return; 
   var headers = data[0];
   
-  var colCedula = -1, colNombre = -1, colPrograma = -1;
+  var colCedula = -1, colNombre = -1, colPrograma = -1, colPerfil = -1;
   var colLink2 = headers.indexOf("Llenar Formulario 2");
   var colLink3 = headers.indexOf("Llenar Formulario 3");
   var colLink4 = headers.indexOf("Llenar Formulario 4");
@@ -29,12 +29,14 @@ function generarTodosLosEnlaces() {
     if(h.indexOf("cedula") !== -1 || h.indexOf("cédula") !== -1) {
        colCedula = i;
     }
-    // Evitar atrapar la columna "Nombre de quien recibe"
     else if(h.indexOf("nombre") !== -1 && h.indexOf("recibe") === -1 && h.indexOf("evaluador") === -1 && colNombre === -1) {
        colNombre = i;
     }
     else if(h.indexOf("programa") !== -1) {
        colPrograma = i;
+    }
+    else if(h.indexOf("perfil") !== -1) {
+       colPerfil = i;
     }
   }
   
@@ -60,45 +62,45 @@ function generarTodosLosEnlaces() {
     var cedula = String(fila[colCedula] || "");
     var nombre = String(fila[colNombre] || "");
     var programa = colPrograma !== -1 ? String(fila[colPrograma] || "") : "";
+    var perfil = colPerfil !== -1 ? String(fila[colPerfil] || "") : "";
     
     if(!cedula || !nombre) continue; 
     
     if(!fila[colLink2] || fila[colLink2] === "") {
-       var link2 = buildUrl(f2, map2, cedula, nombre, programa);
+       var link2 = buildUrl(f2, map2, cedula, nombre, programa, perfil);
        sheet.getRange(r+1, colLink2+1).setValue(link2);
     }
     if(!fila[colLink3] || fila[colLink3] === "") {
-       var link3 = buildUrl(f3, map3, cedula, nombre, programa);
+       var link3 = buildUrl(f3, map3, cedula, nombre, programa, perfil);
        sheet.getRange(r+1, colLink3+1).setValue(link3);
     }
     if(!fila[colLink4] || fila[colLink4] === "") {
-       var link4 = buildUrl(f4, map4, cedula, nombre, programa);
+       var link4 = buildUrl(f4, map4, cedula, nombre, programa, perfil);
        sheet.getRange(r+1, colLink4+1).setValue(link4);
     }
   }
-  
-  SpreadsheetApp.getUi().alert("¡Enlaces pre-llenados generados exitosamente!");
 }
 
 function getItemsMapping(form) {
   var items = form.getItems();
-  var map = {cedula: null, nombre: null, programa: null};
+  var map = {cedula: null, nombre: null, programa: null, perfil: null};
   for(var i=0; i<items.length; i++){
     var t = items[i].getTitle().toLowerCase();
     if((t.indexOf("cedula") !== -1 || t.indexOf("cédula") !== -1) && !map.cedula) map.cedula = items[i];
-    // Evitar atrapar campos de quien recibe o evalua
     else if(t.indexOf("nombre") !== -1 && t.indexOf("recibe") === -1 && t.indexOf("evaluador") === -1 && !map.nombre) map.nombre = items[i];
     else if(t.indexOf("programa") !== -1 && !map.programa) map.programa = items[i];
+    else if(t.indexOf("perfil") !== -1 && !map.perfil) map.perfil = items[i];
   }
   return map;
 }
 
-function buildUrl(form, map, cedula, nombre, programa) {
+function buildUrl(form, map, cedula, nombre, programa, perfil) {
   var formResponse = form.createResponse();
   
   if(map.cedula) fillItem(formResponse, map.cedula, cedula);
   if(map.nombre) fillItem(formResponse, map.nombre, nombre);
   if(map.programa && programa) fillItem(formResponse, map.programa, programa);
+  if(map.perfil && perfil) fillItem(formResponse, map.perfil, perfil);
   
   return formResponse.toPrefilledUrl();
 }
