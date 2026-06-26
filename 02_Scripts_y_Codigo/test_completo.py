@@ -23,7 +23,7 @@ CORREO_JEFE = "jhvargas@uniquindio.edu.co"
 HOY = datetime.date.today().strftime("%d/%m/%Y")
 
 def autenticar():
-    creds = Credentials.from_authorized_user_file("token.json",
+    creds = Credentials.from_authorized_user_file(r"..\03_Credenciales_y_Accesos\token.json",
         ["https://www.googleapis.com/auth/spreadsheets"])
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
