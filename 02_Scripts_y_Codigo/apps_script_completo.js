@@ -254,73 +254,175 @@ function instalarTodosLosTriggers() {
 }
 
 // =====================================================================
-// PRELLENADO DE ENLACES (Formulario 1)
+// PRELLENADO DE ENLACES - v2 CORREGIDO
 // =====================================================================
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Acciones Concurso')
-    .addItem('Generar Enlaces Pre-llenados (Todas las filas)', 'generarTodosLosEnlaces')
+    .addItem('Generar / Actualizar TODOS los enlaces', 'generarTodosLosEnlaces')
     .addToUi();
 }
 
-// (Mismo codigo de pre-llenado que el usuario tenia)
+// Trigger: se activa cuando un candidato envia el Formulario 1
+function onFormSubmit(e) {
+  Utilities.sleep(2000);
+  generarTodosLosEnlaces();
+}
+
 function generarTodosLosEnlaces() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Respuestas de formulario 1");
-  if(!sheet) return;
+  if (!sheet) {
+    Logger.log("ERROR: No se encontro la hoja 'Respuestas de formulario 1'");
+    return;
+  }
   var data = sheet.getDataRange().getValues();
-  if(data.length < 2) return; 
+  if (data.length < 2) return;
   var headers = data[0];
+
   var colCedula = -1, colNombre = -1, colPrograma = -1, colPerfil = -1;
   var colLink2 = headers.indexOf("Llenar Formulario 2");
   var colLink3 = headers.indexOf("Llenar Formulario 3");
   var colLink4 = headers.indexOf("Llenar Formulario 4");
-  for(var i=0; i<headers.length; i++){
-    var h = String(headers[i]).toLowerCase();
-    if(h.indexOf("cedula") !== -1 || h.indexOf("cédula") !== -1) colCedula = i;
-    else if(h.indexOf("nombre") !== -1 && h.indexOf("recibe") === -1 && h.indexOf("evaluador") === -1 && colNombre === -1) colNombre = i;
-    else if(h.indexOf("programa") !== -1) colPrograma = i;
-    else if(h.indexOf("perfil") !== -1) colPerfil = i; 
+
+  for (var i = 0; i < headers.length; i++) {
+    var h = String(headers[i]).toLowerCase().trim();
+    if ((h.indexOf("cedula") !== -1 || h.indexOf("cédula") !== -1) && colCedula === -1) {
+      colCedula = i;
+    } else if (h.indexOf("nombre") !== -1 && h.indexOf("recibe") === -1 &&
+               h.indexOf("evaluador") === -1 && h.indexOf("miembro") === -1 && colNombre === -1) {
+      colNombre = i;
+    } else if (h.indexOf("programa") !== -1 && colPrograma === -1) {
+      colPrograma = i;
+    } else if (h.indexOf("perfil") !== -1 && colPerfil === -1) {
+      colPerfil = i;
+    }
   }
-  if(colCedula === -1 || colNombre === -1) return;
-  if(colLink2 === -1) { colLink2 = headers.length; sheet.getRange(1, colLink2+1).setValue("Llenar Formulario 2"); }
-  if(colLink3 === -1) { colLink3 = headers.length; sheet.getRange(1, colLink3+1).setValue("Llenar Formulario 3"); }
-  if(colLink4 === -1) { colLink4 = headers.length; sheet.getRange(1, colLink4+1).setValue("Llenar Formulario 4"); }
-  var f2 = FormApp.openById(FORM_IDS[2]), f3 = FormApp.openById(FORM_IDS[3]), f4 = FormApp.openById(FORM_IDS[4]);
-  var map2 = getItemsMapping(f2), map3 = getItemsMapping(f3), map4 = getItemsMapping(f4);
-  for(var r=1; r<data.length; r++) {
-    var fila = data[r], cedula = String(fila[colCedula]||""), nombre = String(fila[colNombre]||"");
-    var programa = colPrograma !== -1 ? String(fila[colPrograma]||"") : "";
-    var perfil = colPerfil !== -1 ? String(fila[colPerfil]||"") : ""; 
-    if(!cedula || !nombre) continue; 
-    if(!fila[colLink2] || fila[colLink2] === "") sheet.getRange(r+1, colLink2+1).setValue(buildUrl(f2, map2, cedula, nombre, programa, perfil));
-    if(!fila[colLink3] || fila[colLink3] === "") sheet.getRange(r+1, colLink3+1).setValue(buildUrl(f3, map3, cedula, nombre, programa, perfil));
-    if(!fila[colLink4] || fila[colLink4] === "") sheet.getRange(r+1, colLink4+1).setValue(buildUrl(f4, map4, cedula, nombre, programa, perfil));
+
+  Logger.log("Columnas -> cedula:" + colCedula + " nombre:" + colNombre + " programa:" + colPrograma + " perfil:" + colPerfil);
+
+  if (colCedula === -1 || colNombre === -1) {
+    SpreadsheetApp.getUi().alert("Error: No se encontró la columna de Nombre o Cédula.");
+    return;
   }
+
+  if (colLink2 === -1) { colLink2 = headers.length; sheet.getRange(1, colLink2+1).setValue("Llenar Formulario 2"); headers.push("Llenar Formulario 2"); }
+  if (colLink3 === -1) { colLink3 = headers.length; sheet.getRange(1, colLink3+1).setValue("Llenar Formulario 3"); headers.push("Llenar Formulario 3"); }
+  if (colLink4 === -1) { colLink4 = headers.length; sheet.getRange(1, colLink4+1).setValue("Llenar Formulario 4"); headers.push("Llenar Formulario 4"); }
+
+  var f2 = FormApp.openById(FORM_IDS[2]);
+  var f3 = FormApp.openById(FORM_IDS[3]);
+  var f4 = FormApp.openById(FORM_IDS[4]);
+  var map2 = getItemsMapping(f2);
+  var map3 = getItemsMapping(f3);
+  var map4 = getItemsMapping(f4);
+
+  Logger.log("F2 perfil encontrado: " + (map2.perfil !== null ? map2.perfil.getTitle() : "NO"));
+
+  var actualizados = 0;
+  for (var r = 1; r < data.length; r++) {
+    var fila = data[r];
+    var cedula  = String(fila[colCedula]  || "").trim();
+    var nombre  = String(fila[colNombre]  || "").trim();
+    var programa = colPrograma !== -1 ? String(fila[colPrograma] || "").trim() : "";
+    var perfil   = colPerfil   !== -1 ? String(fila[colPerfil]   || "").trim() : "";
+    if (!cedula || !nombre) continue;
+
+    Logger.log("Candidato: " + nombre + " | Perfil: '" + perfil + "'");
+
+    // SIEMPRE regenerar para corregir links anteriores incorrectos
+    sheet.getRange(r+1, colLink2+1).setValue(buildUrl(f2, map2, cedula, nombre, programa, perfil));
+    sheet.getRange(r+1, colLink3+1).setValue(buildUrl(f3, map3, cedula, nombre, programa, perfil));
+    sheet.getRange(r+1, colLink4+1).setValue(buildUrl(f4, map4, cedula, nombre, programa, perfil));
+    actualizados++;
+  }
+
+  Logger.log("Completado: " + actualizados + " candidato(s) actualizados.");
+  SpreadsheetApp.getUi().alert("✅ Listo\n\n" + actualizados + " candidato(s) actualizados.\nRevisa Ver > Registros para ver el detalle.");
 }
+
+// CORREGIDO: verifica el tipo del item antes de asignarlo como "perfil"
+// para evitar asignar encabezados de seccion (ej: "Lista de Chequeo - Requisitos del Perfil")
 function getItemsMapping(form) {
-  var items = form.getItems(), map = {cedula: null, nombre: null, programa: null, perfil: null}; 
-  for(var i=0; i<items.length; i++){
-    var t = items[i].getTitle().toLowerCase();
-    if((t.indexOf("cedula") !== -1 || t.indexOf("cédula") !== -1) && !map.cedula) map.cedula = items[i];
-    else if(t.indexOf("nombre") !== -1 && t.indexOf("recibe") === -1 && t.indexOf("evaluador") === -1 && !map.nombre) map.nombre = items[i];
-    else if(t.indexOf("programa") !== -1 && !map.programa) map.programa = items[i];
-    else if(t.indexOf("perfil") !== -1 && !map.perfil) map.perfil = items[i]; 
+  var items = form.getItems();
+  var map = { cedula: null, nombre: null, programa: null, perfil: null };
+  for (var i = 0; i < items.length; i++) {
+    var t = items[i].getTitle().toLowerCase().trim();
+    var tipo = items[i].getType();
+    if ((t.indexOf("cedula") !== -1 || t.indexOf("cédula") !== -1) && !map.cedula) {
+      map.cedula = items[i];
+    } else if (t.indexOf("nombre") !== -1 && t.indexOf("recibe") === -1 &&
+               t.indexOf("evaluador") === -1 && t.indexOf("miembro") === -1 && !map.nombre) {
+      map.nombre = items[i];
+    } else if (t.indexOf("programa") !== -1 && !map.programa) {
+      map.programa = items[i];
+    } else if (t.indexOf("perfil") !== -1 && t.indexOf("chequeo") === -1 && !map.perfil) {
+      // Solo asignar campos reales de pregunta (no encabezados de seccion)
+      if (tipo === FormApp.ItemType.LIST ||
+          tipo === FormApp.ItemType.MULTIPLE_CHOICE ||
+          tipo === FormApp.ItemType.TEXT) {
+        map.perfil = items[i];
+        Logger.log("Perfil mapeado -> '" + items[i].getTitle() + "' tipo: " + tipo);
+      }
+    }
   }
   return map;
 }
+
 function buildUrl(form, map, cedula, nombre, programa, perfil) {
   var formResponse = form.createResponse();
-  if(map.cedula) fillItem(formResponse, map.cedula, cedula);
-  if(map.nombre) fillItem(formResponse, map.nombre, nombre);
-  if(map.programa && programa) fillItem(formResponse, map.programa, programa);
-  if(map.perfil && perfil) fillItem(formResponse, map.perfil, perfil); 
+  if (map.cedula)               fillItem(formResponse, map.cedula,   cedula);
+  if (map.nombre)               fillItem(formResponse, map.nombre,   nombre);
+  if (map.programa && programa) fillItem(formResponse, map.programa, programa);
+  if (map.perfil   && perfil)   fillItem(formResponse, map.perfil,   perfil);
   return formResponse.toPrefilledUrl();
 }
+
+// CORREGIDO: valida que la opcion exista en el dropdown antes de crear la respuesta
+// La version anterior silenciaba el error si el valor no coincidia exactamente
 function fillItem(formResponse, item, value) {
-   try {
-     var t = item.getType();
-     if (t === FormApp.ItemType.TEXT) formResponse.withItemResponse(item.asTextItem().createResponse(value));
-     else if (t === FormApp.ItemType.MULTIPLE_CHOICE) formResponse.withItemResponse(item.asMultipleChoiceItem().createResponse(value));
-     else if (t === FormApp.ItemType.LIST) formResponse.withItemResponse(item.asListItem().createResponse(value));
-   } catch(e) {}
+  var v = String(value || "").trim();
+  if (!v) return;
+  var t = item.getType();
+  var titulo = item.getTitle();
+  try {
+    if (t === FormApp.ItemType.TEXT) {
+      formResponse.withItemResponse(item.asTextItem().createResponse(v));
+    } else if (t === FormApp.ItemType.PARAGRAPH_TEXT) {
+      formResponse.withItemResponse(item.asParagraphTextItem().createResponse(v));
+    } else if (t === FormApp.ItemType.MULTIPLE_CHOICE) {
+      var cMC = item.asMultipleChoiceItem().getChoices();
+      var mMC = buscarOpcion(cMC, v);
+      if (mMC) {
+        formResponse.withItemResponse(item.asMultipleChoiceItem().createResponse(mMC));
+      } else {
+        Logger.log("RADIO '" + titulo + "': '" + v + "' no encontrada. Opciones: " + cMC.map(function(c){return c.getValue();}).join(", "));
+      }
+    } else if (t === FormApp.ItemType.LIST) {
+      var cL = item.asListItem().getChoices();
+      var mL = buscarOpcion(cL, v);
+      if (mL) {
+        formResponse.withItemResponse(item.asListItem().createResponse(mL));
+        Logger.log("DROPDOWN '" + titulo + "': '" + mL + "' OK");
+      } else {
+        Logger.log("DROPDOWN '" + titulo + "': '" + v + "' NO encontrada. Opciones: " + cL.map(function(c){return c.getValue();}).join(", "));
+      }
+    } else if (t === FormApp.ItemType.CHECKBOX) {
+      formResponse.withItemResponse(item.asCheckboxItem().createResponse([v]));
+    } else {
+      Logger.log("Tipo no manejado '" + titulo + "': " + t);
+    }
+  } catch(e) {
+    Logger.log("ERROR fillItem '" + titulo + "': " + e.message);
+  }
+}
+
+// Busca una opcion en un array de choices ignorando mayusculas/minusculas y espacios
+function buscarOpcion(choices, valor) {
+  var vN = valor.trim().toLowerCase();
+  for (var i = 0; i < choices.length; i++) {
+    if (choices[i].getValue().trim().toLowerCase() === vN) {
+      return choices[i].getValue(); // valor exacto del formulario
+    }
+  }
+  return null;
 }
