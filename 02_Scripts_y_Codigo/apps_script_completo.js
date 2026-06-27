@@ -47,28 +47,57 @@ function getFilaDatos(hojaName) {
 function onFormSubmit_F2(e) {
   try {
     var d = getFilaDatos("Respuestas de formulario 2");
-    var cedula = d.safe("Cedula del Candidato");
-    var nombre = d.safe("Nombre Completo del Candidato");
+    var cedula   = d.safe("Cedula del Candidato");
+    var nombre   = d.safe("Nombre Completo del Candidato");
+    var prog     = d.safe("Programa / Area del Concurso");
+    var perfil   = d.safe("Perfil del Cargo");
+    var fecha    = d.safe("Fecha de Verificacion");
+    var obsGen   = d.safe("Observaciones Generales de la Verificacion");
+    var concepto = d.safe("Concepto Final");
+
+    // Separar Facultad y Programa del campo compuesto "FAC - PROG"
+    var fac = prog.indexOf("-") > -1 ? prog.split("-")[0].trim() : prog;
+    var prg = prog.indexOf("-") > -1 ? prog.split("-")[1].trim() : prog;
+
     var colEnlace = d.getColIndex("Enlace Documento");
-    if(colEnlace === -1) {
+    if (colEnlace === -1) {
       colEnlace = d.enc.length + 1;
       d.hoja.getRange(1, colEnlace).setValue("Enlace Documento");
     }
-    
-    var doc = DocumentApp.create("ETAPA2_" + cedula + "_" + nombre.substring(0,30));
+
+    var doc  = DocumentApp.create("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
     var body = doc.getBody();
-    body.appendParagraph("VERIFICACIÓN DE REQUISITOS DEL PERFIL")
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1)
-        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    body.appendParagraph("NOMBRE: " + nombre + "    C.C. " + cedula);
-    body.appendParagraph("PROGRAMA: " + d.safe("Programa / Area del Concurso") + "    PERFIL: " + d.safe("Perfil del Cargo"));
-    body.appendParagraph("FECHA: " + d.safe("Fecha de Verificacion"));
+    body.setMarginTop(40); body.setMarginBottom(40);
+    body.setMarginLeft(54); body.setMarginRight(54);
+
+    // ── TÍTULOS ──────────────────────────────────────────────────────
+    var p1 = body.appendParagraph("ETAPA 2 - VERIFICACIÓN DE REQUISITOS DEL PERFIL");
+    p1.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    p1.editAsText().setFontFamily("Arial").setFontSize(13).setBold(true);
+
+    var p2 = body.appendParagraph("CONCURSO PÚBLICO DE MÉRITOS 2026 - UNIVERSIDAD DEL QUINDÍO");
+    p2.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    p2.editAsText().setFontFamily("Arial").setFontSize(11).setBold(true);
+
     body.appendParagraph("");
 
-    var t = body.appendTable();
-    var th = t.appendTableRow();
-    th.appendTableCell("REQUISITO"); th.appendTableCell("OBSERVACIONES"); th.appendTableCell("CUMPLE");
-    
+    // ── DATOS DEL CANDIDATO ──────────────────────────────────────────
+    function addDato(etiq, valor) {
+      var p = body.appendParagraph(etiq + valor.toUpperCase());
+      p.editAsText().setFontFamily("Arial").setFontSize(10);
+      p.editAsText().setBold(true, 0, etiq.length - 1);
+      return p;
+    }
+    addDato("NOMBRE: ", nombre);
+    addDato("C.C.: ", cedula);
+    addDato("FACULTAD DE: ", fac);
+    addDato("PROGRAMA: ", prg);
+    addDato("ÁREA O LÍNEA (PERFIL): ", perfil);
+    addDato("FECHA DE VERIFICACIÓN: ", fecha);
+
+    body.appendParagraph("");
+
+    // ── TABLA DE REQUISITOS ──────────────────────────────────────────
     var REQS = [
       "1. Formato de Inscripcion firmado por el aspirante",
       "2. Hoja de Vida UQ (Formato GH-FOR-006)",
@@ -82,24 +111,118 @@ function onFormSubmit_F2(e) {
       "10. Tema de disertacion presentado",
       "11. Documentos debidamente foliados"
     ];
-    for(var i=0; i<REQS.length; i++){
-      var vReq = d.safe(REQS[i]);
-      var cumple = (vReq.toUpperCase().indexOf("CUMPLE")>=0 && vReq.toUpperCase().indexOf("NO CUMPLE")<0) ? "SI" : "NO";
-      var r = t.appendTableRow();
-      r.appendTableCell(REQS[i]);
-      r.appendTableCell(d.safe("Observaciones - " + REQS[i].split(".")[0]));
-      r.appendTableCell(cumple).setBackgroundColor(cumple == "SI" ? "#b7e1cd" : "#f4cccc");
+
+    var tabla = body.appendTable();
+    tabla.setBorderColor("#003366");
+
+    // Fila de encabezado
+    var thdr = tabla.appendTableRow();
+    var hCells = [
+      thdr.appendTableCell("REQUISITOS DEL PERFIL"),
+      thdr.appendTableCell("OBSERVACIONES"),
+      thdr.appendTableCell("CUMPLE")
+    ];
+    hCells.forEach(function(c) {
+      c.setBackgroundColor("#003366");
+      c.editAsText().setFontFamily("Arial").setFontSize(10)
+        .setBold(true).setForegroundColor("#FFFFFF");
+    });
+
+    var cumpleTodos = true;
+
+    for (var i = 0; i < REQS.length; i++) {
+      var vReq   = d.safe(REQS[i]);
+      var obsItem = d.safe("Observaciones - " + REQS[i].split(".")[0]);
+      var cumple = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
+                    vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
+      if (cumple === "NO") cumpleTodos = false;
+
+      var fila  = tabla.appendTableRow();
+      var cReq  = fila.appendTableCell(REQS[i]);
+      var cObs  = fila.appendTableCell(obsItem || "");
+      var cCump = fila.appendTableCell(cumple);
+
+      cReq.editAsText().setFontFamily("Arial").setFontSize(9);
+      cObs.editAsText().setFontFamily("Arial").setFontSize(9);
+      cCump.editAsText().setFontFamily("Arial").setFontSize(11).setBold(true);
+      cCump.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+      // VERDE = SI, ROJO = NO
+      cCump.setBackgroundColor(cumple === "SI" ? "#b7e1cd" : "#f4cccc");
+
+      // Filas alternadas para mayor legibilidad
+      if (i % 2 === 1) {
+        cReq.setBackgroundColor("#eef2f7");
+        cObs.setBackgroundColor("#eef2f7");
+      }
     }
-    
+
     body.appendParagraph("");
-    body.appendParagraph("CONCEPTO FINAL: " + d.safe("Concepto Final"));
-    body.appendParagraph("OBSERVACIONES: " + d.safe("Observaciones Generales de la Verificacion"));
+
+    // ── TABLA RESUMEN CONCEPTO ───────────────────────────────────────
+    var tabRes = body.appendTable();
+    tabRes.setBorderColor("#003366");
+    var rRes = tabRes.appendTableRow();
+    var cDesc = rRes.appendTableCell("CONCEPTO FINAL: " + (concepto || (cumpleTodos ? "CUMPLE" : "NO CUMPLE")));
+    var cSI   = rRes.appendTableCell("SI");
+    var cNO   = rRes.appendTableCell("NO");
+    cDesc.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+    cSI.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+    cNO.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+    cSI.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    cNO.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    cSI.setBackgroundColor(cumpleTodos ? "#b7e1cd" : "#ffffff");
+    cNO.setBackgroundColor(!cumpleTodos ? "#f4cccc" : "#ffffff");
+
     body.appendParagraph("");
-    body.appendParagraph("____________________________          ____________________________");
-    body.appendParagraph("FIRMA MIEMBRO COMISIÓN           FIRMA FUNCIONARIO ASUNTOS PROFESORALES");
-    
+
+    // ── OBSERVACIONES GENERALES ──────────────────────────────────────
+    var pObsT = body.appendParagraph("OBSERVACIONES GENERALES:");
+    pObsT.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+    var pObs = body.appendParagraph(obsGen || "");
+    pObs.editAsText().setFontFamily("Arial").setFontSize(10);
+    body.appendParagraph("_________________________________________________________________________");
+    body.appendParagraph("_________________________________________________________________________");
+    body.appendParagraph("");
+
+    // ── TABLA DE FIRMAS ─────────────────────────────────────────────
+    var tabFirmas = body.appendTable();
+    tabFirmas.setBorderColor("#003366");
+
+    // Encabezado firmas
+    var fhdr = tabFirmas.appendTableRow();
+    var fh1 = fhdr.appendTableCell("REVISIÓN");
+    var fh2 = fhdr.appendTableCell("VERIFICACIÓN");
+    [fh1, fh2].forEach(function(c) {
+      c.setBackgroundColor("#003366");
+      c.editAsText().setFontFamily("Arial").setFontSize(10)
+        .setBold(true).setForegroundColor("#FFFFFF");
+      c.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+
+    // Fila firmas principales
+    var fr1 = tabFirmas.appendTableRow();
+    var ff1 = fr1.appendTableCell("NOMBRE Y FIRMA\nMIEMBRO COMISIÓN\n\n\n");
+    var ff2 = fr1.appendTableCell("NOMBRE Y FIRMA\nFUNCIONARIO ASUNTOS PROFESORALES\n\n\n");
+    [ff1, ff2].forEach(function(c) {
+      c.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
+      c.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+
+    // Fila VoBo
+    var fr2 = tabFirmas.appendTableRow();
+    var fv1 = fr2.appendTableCell("Vo.Bo. COORDINADOR COMISIÓN\n\n\n");
+    var fv2 = fr2.appendTableCell("Vo.Bo. JEFE OFICINA ASUNTOS PROFESORALES\n\n\n");
+    [fv1, fv2].forEach(function(c) {
+      c.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
+      c.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+
     doc.saveAndClose();
-    d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/document/d/" + doc.getId() + "/edit");
+    d.hoja.getRange(d.ult, colEnlace).setValue(
+      "https://docs.google.com/document/d/" + doc.getId() + "/edit"
+    );
+
   } catch(err) { Logger.log("Error F2: " + err); }
 }
 
