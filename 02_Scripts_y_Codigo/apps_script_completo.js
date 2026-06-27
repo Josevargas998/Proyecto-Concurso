@@ -85,7 +85,7 @@ function onFormSubmit_F2(e) {
     function addDato(etiq, valor) {
       var p = body.appendParagraph(etiq + valor.toUpperCase());
       p.editAsText().setFontFamily("Arial").setFontSize(10);
-      p.editAsText().setBold(true, 0, etiq.length - 1);
+      p.editAsText().setBold(0, etiq.length - 1, true);
       return p;
     }
     addDato("NOMBRE: ", nombre);
