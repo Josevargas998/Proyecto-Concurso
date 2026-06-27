@@ -43,6 +43,20 @@ function getFilaDatos(hojaName) {
 }
 
 // =====================================================================
+// DIAGNOSTICO: Corre esta funcion para ver todos los encabezados de
+//              "Respuestas de formulario 2" en los Registros (Logger)
+// =====================================================================
+function debugF2Columnas() {
+  var d = getFilaDatos("Respuestas de formulario 2");
+  var lineas = ["Total columnas: " + d.enc.length, ""];
+  for (var i = 0; i < d.enc.length; i++) {
+    lineas.push("[" + (i + 1) + "] " + d.enc[i]);
+  }
+  Logger.log(lineas.join("\n"));
+  SpreadsheetApp.getUi().alert("Revisa Ver > Registros para ver los nombres de las columnas.");
+}
+
+// =====================================================================
 // FORMULARIO 2: VERIFICACION DE REQUISITOS
 // Copia la plantilla Google Doc (TPL_FORM2_ID) y llena los datos.
 // Los logos y el formato se preservan automaticamente.
@@ -123,11 +137,23 @@ function onFormSubmit_F2(e) {
     }
 
     var cumpleTodos = true;
+
+    // Recopilar en orden las columnas de observaciones por requisito
+    // (se excluye "observaciones generales" que es el resumen final)
+    var obsCols = [];
+    for (var k = 0; k < d.enc.length; k++) {
+      var hdr = String(d.enc[k]).toLowerCase();
+      if (hdr.indexOf("observaci") >= 0 && hdr.indexOf("general") < 0) {
+        obsCols.push(k);
+      }
+    }
+    Logger.log("Columnas de observaciones encontradas: " + obsCols.length);
+
     if (reqTable) {
       for (var i = 0; i < REQS.length && i < reqTable.getNumRows() - 1; i++) {
         var row     = reqTable.getRow(i + 1); // Fila 0 es encabezado
         var vReq    = d.safe(REQS[i]);
-        var obsItem = d.safe("Observaciones - " + (i + 1));
+        var obsItem = obsCols.length > i ? String(d.fila[obsCols[i]] || "").trim() : "";
         var cumple  = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
                        vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
         if (cumple === "NO") cumpleTodos = false;
