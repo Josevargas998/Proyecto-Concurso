@@ -15,98 +15,25 @@ from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 SS_ID          = "1fXU5t9fmDfXwskFs42r1eZNZa0KCxNo1Li77yrDpyvY"
-CARPETA_SALIDA = "Documentos_Candidatos"
-PLANTILLA_2    = "2.docx"
-PLANTILLA_3    = "3.xlsx"
-
-from googleapiclient.http import MediaFileUpload
-from google_auth_oauthlib.flow import InstalledAppFlow
-import os.path
+CARPETA_SALIDA = r"..\04_Documentos_Generados"
+PLANTILLA_2    = r"..\01_Plantillas_Originales\2.docx"
+PLANTILLA_3    = r"..\01_Plantillas_Originales\3.xlsx"
 
 def autenticar():
-    SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-    return build("sheets", "v4", credentials=creds), build("drive", "v3", credentials=creds)
-
-def col_num_to_letter(n):
-    string = ""
-    while n > 0:
-        n, remainder = divmod(n - 1, 26)
-        string = chr(65 + remainder) + string
-    return string
+    creds = Credentials.from_authorized_user_file(r"..\03_Credenciales_y_Accesos\token.json",
+        ["https://www.googleapis.com/auth/spreadsheets"])
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    return build("sheets", "v4", credentials=creds)
 
 def leer_hoja(service, nombre_hoja):
     res = service.spreadsheets().values().get(
         spreadsheetId=SS_ID, range=nombre_hoja + "!A1:ZZ500").execute()
     filas = res.get("values", [])
     if len(filas) < 2:
-        return [], "A"
+        return []
     enc = filas[0]
-    
-    if "Enlace Documento" in enc:
-        col_idx = enc.index("Enlace Documento") + 1
-    else:
-        # Escribir el encabezado si no existe
-        col_idx = len(enc) + 1
-        service.spreadsheets().values().update(
-            spreadsheetId=SS_ID, range=f"{nombre_hoja}!{col_num_to_letter(col_idx)}1",
-            valueInputOption="USER_ENTERED", body={'values': [["Enlace Documento"]]}).execute()
-            
-    col_letra = col_num_to_letter(col_idx)
-    
-    datos = []
-    for i, f in enumerate(filas[1:]):
-        d = dict(zip(enc, f + [""] * (len(enc) - len(f))))
-        d['_fila_real'] = i + 2
-        datos.append(d)
-    return datos, col_letra
-
-def obtener_o_crear_carpeta(drive_service, nombre, parent_id=None):
-    q = f"mimeType='application/vnd.google-apps.folder' and name='{nombre}' and trashed=false"
-    if parent_id:
-        q += f" and '{parent_id}' in parents"
-    res = drive_service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
-    if res.get('files', []):
-        return res.get('files')[0].get('id')
-    
-    file_metadata = {
-        'name': nombre,
-        'mimeType': 'application/vnd.google-apps.folder'
-    }
-    if parent_id:
-        file_metadata['parents'] = [parent_id]
-    folder = drive_service.files().create(body=file_metadata, fields='id').execute()
-    return folder.get('id')
-
-def subir_a_drive(drive_service, filepath, filename, parent_id, is_sheet=False):
-    mime_type_dest = 'application/vnd.google-apps.spreadsheet' if is_sheet else 'application/vnd.google-apps.document'
-    mime_type_src = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if is_sheet else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    
-    file_metadata = {
-        'name': filename,
-        'parents': [parent_id],
-        'mimeType': mime_type_dest
-    }
-    media = MediaFileUpload(filepath, mimetype=mime_type_src, resumable=True)
-    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
-    return file.get('webViewLink')
-
-def actualizar_enlace(sheets_service, hoja_nombre, fila_num, columna_letra, enlace):
-    rango = f"{hoja_nombre}!{columna_letra}{fila_num}"
-    body = {'values': [[enlace]]}
-    sheets_service.spreadsheets().values().update(
-        spreadsheetId=SS_ID, range=rango,
-        valueInputOption="USER_ENTERED", body=body).execute()
+    return [dict(zip(enc, f + [""] * (len(enc) - len(f)))) for f in filas[1:]]
 
 def safe(d, k, default=""):
     return str(d.get(k, default) or default).strip()
@@ -545,106 +472,59 @@ def generar_docx_form4(fila, carpeta):
 # ═══════════════════════════════════════════════════════
 def main():
     print("=" * 65)
-    print("  GENERADOR DE DOCUMENTOS — INTEGRACIÓN CON GOOGLE DRIVE")
+    print("  GENERADOR DE DOCUMENTOS — ESTRUCTURA IDENTICA A ORIGINALES")
     print("=" * 65)
 
-    try:
-        sheets_service, drive_service = autenticar()
-    except Exception as e:
-        print("\n[!] ERROR DE AUTENTICACIÓN")
-        print("Asegúrese de haber eliminado 'token.json' para renovar permisos e incluir Google Drive.")
-        print(f"Detalle: {e}")
-        return
+    service = autenticar()
 
-    datos_f2, col_f2 = leer_hoja(sheets_service, "Respuestas de formulario 2")
-    datos_f3, col_f3 = leer_hoja(sheets_service, "Respuestas de formulario 3")
-    datos_f4, col_f4 = leer_hoja(sheets_service, "Respuestas de formulario 4")
+    datos_f2 = leer_hoja(service, "Respuestas de formulario 2")
+    datos_f3 = leer_hoja(service, "Respuestas de formulario 3")
+    datos_f4 = leer_hoja(service, "Respuestas de formulario 4")
 
     print(f"\n  Respuestas Etapa 2: {len(datos_f2)}")
     print(f"  Respuestas Etapa 3: {len(datos_f3)}")
     print(f"  Respuestas Etapa 4: {len(datos_f4)}")
 
     os.makedirs(CARPETA_SALIDA, exist_ok=True)
-    
-    print("\n  Conectando con Google Drive...")
-    drive_master_id = obtener_o_crear_carpeta(drive_service, "Documentos_Candidatos")
-    
     total = 0
 
-    print(f"\n  Generando y subiendo a Google Drive...")
+    print(f"\n  Generando en: {os.path.abspath(CARPETA_SALIDA)}")
     print("-" * 65)
 
-    # ── ETAPA 2 ──
     for fila in datos_f2:
         nombre = safe(fila, "Nombre Completo del Candidato")
-        cedula = safe(fila, "Cedula del Candidato")
-        if nombre and not safe(fila, "Enlace Documento"):
-            carpeta_c = os.path.join(CARPETA_SALIDA, nombre_archivo(nombre, cedula))
+        if nombre:
+            carpeta_c = os.path.join(CARPETA_SALIDA,
+                nombre_archivo(nombre, safe(fila, "Cedula del Candidato")))
             os.makedirs(carpeta_c, exist_ok=True)
-            
-            # Generar localmente
             generar_docx_form2(fila, carpeta_c)
-            
-            # Subir a Drive
-            nombre_arch = nombre_archivo(nombre, cedula) + "_ETAPA2_Verificacion.docx"
-            ruta_local = os.path.join(carpeta_c, nombre_arch)
-            
-            drive_cand_id = obtener_o_crear_carpeta(drive_service, nombre_archivo(nombre, cedula), drive_master_id)
-            enlace = subir_a_drive(drive_service, ruta_local, nombre_arch.replace(".docx", ""), drive_cand_id, is_sheet=False)
-            
-            actualizar_enlace(sheets_service, "Respuestas de formulario 2", fila['_fila_real'], col_f2, enlace)
-            
-            os.remove(ruta_local) # Eliminar archivo local
             total += 1
-            print(f"  [SUBIDO] {nombre_arch.replace('.docx', '')} (Etapa 2)")
 
-    # ── ETAPA 3 ──
     for fila in datos_f3:
         nombre = safe(fila, "Nombre Completo del Candidato")
-        cedula = safe(fila, "Cedula del Candidato")
-        if nombre and not safe(fila, "Enlace Documento"):
-            carpeta_c = os.path.join(CARPETA_SALIDA, nombre_archivo(nombre, cedula))
+        if nombre:
+            carpeta_c = os.path.join(CARPETA_SALIDA,
+                nombre_archivo(nombre, safe(fila, "Cedula del Candidato")))
             os.makedirs(carpeta_c, exist_ok=True)
-            
             generar_xlsx_form3(fila, carpeta_c)
-            
-            nombre_arch = nombre_archivo(nombre, cedula) + "_ETAPA3_Calificacion.xlsx"
-            ruta_local = os.path.join(carpeta_c, nombre_arch)
-            
-            drive_cand_id = obtener_o_crear_carpeta(drive_service, nombre_archivo(nombre, cedula), drive_master_id)
-            enlace = subir_a_drive(drive_service, ruta_local, nombre_arch.replace(".xlsx", ""), drive_cand_id, is_sheet=True)
-            
-            actualizar_enlace(sheets_service, "Respuestas de formulario 3", fila['_fila_real'], col_f3, enlace)
-            
-            os.remove(ruta_local)
             total += 1
-            print(f"  [SUBIDO] {nombre_arch.replace('.xlsx', '')} (Etapa 3)")
 
-    # ── ETAPA 4 ──
     for fila in datos_f4:
         nombre = safe(fila, "Nombre Completo")
-        cedula = safe(fila, "Cedula de Ciudadania")
-        if nombre and not safe(fila, "Enlace Documento"):
-            carpeta_c = os.path.join(CARPETA_SALIDA, nombre_archivo(nombre, cedula))
+        if nombre:
+            carpeta_c = os.path.join(CARPETA_SALIDA,
+                nombre_archivo(nombre, safe(fila, "Cedula de Ciudadania")))
             os.makedirs(carpeta_c, exist_ok=True)
-            
             generar_docx_form4(fila, carpeta_c)
-            
-            nombre_arch = nombre_archivo(nombre, cedula) + "_ETAPA4_FichaIngreso.docx"
-            ruta_local = os.path.join(carpeta_c, nombre_arch)
-            
-            drive_cand_id = obtener_o_crear_carpeta(drive_service, nombre_archivo(nombre, cedula), drive_master_id)
-            enlace = subir_a_drive(drive_service, ruta_local, nombre_arch.replace(".docx", ""), drive_cand_id, is_sheet=False)
-            
-            actualizar_enlace(sheets_service, "Respuestas de formulario 4", fila['_fila_real'], col_f4, enlace)
-            
-            os.remove(ruta_local)
             total += 1
-            print(f"  [SUBIDO] {nombre_arch.replace('.docx', '')} (Etapa 4)")
 
     print("-" * 65)
-    print(f"\n  Total documentos nuevos procesados y subidos: {total}")
+    print(f"\n  Total documentos generados: {total}")
+    print(f"  Carpeta: {os.path.abspath(CARPETA_SALIDA)}")
     print("=" * 65)
+
+    import subprocess
+    subprocess.Popen(f'explorer "{os.path.abspath(CARPETA_SALIDA)}"')
 
 if __name__ == "__main__":
     main()
