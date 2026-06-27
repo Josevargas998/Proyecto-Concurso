@@ -87,9 +87,13 @@ function onFormSubmit_F2(e) {
         paras[p].setText("PROGRAMA: " + prg.toUpperCase());
       } else if (low.indexOf("area o linea:") >= 0) {
         paras[p].setText("AREA O LINEA: " + perfil.toUpperCase());
-      } else if (txt.indexOf("____") >= 0 && low.indexOf("observaciones") < 0) {
-        paras[p].setText(obsGen || "");
       }
+    }
+
+    // Reemplazar la linea de subrayados (OBSERVACIONES GENERALES) con el texto del formulario
+    // replaceText busca en TODO el documento, incluyendo dentro de tablas
+    if (obsGen && obsGen.length > 0) {
+      body.replaceText("_{10,}", obsGen);
     }
 
     // ── 3. LLENAR TABLA DE REQUISITOS ────────────────────────────────
