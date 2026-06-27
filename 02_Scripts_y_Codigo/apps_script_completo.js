@@ -243,14 +243,29 @@ function onFormSubmit_F3(e) {
 
     var data = [
       ["NIVEL ACADEMICO:", d.safe("Nivel Academico Acreditado")],
-      ["Justificacion nivel:", d.safe("Justificacion - Nivel Academico")],
+      ["Justificacion Nivel:", d.safe("Justificacion - Nivel Academico")],
+      
       ["2a. Exp. Docente:", d.safe("2a. Experiencia Docente")],
+      ["Justificacion 2a:", d.safe("Justificacion - Experiencia Docente")],
+      
       ["2b. Investigacion:", d.safe("2b. Experiencia en Investigacion")],
+      ["Justificacion 2b:", d.safe("Justificacion - Investigacion")],
+      
       ["2c. Extension:", d.safe("2c. Experiencia en Extension")],
+      ["Justificacion 2c:", d.safe("Justificacion - Extension / Proyeccion")],
+      
       ["2d. Exp. Profesional:", d.safe("2d. Experiencia Profesional Diferente")],
+      ["Justificacion 2d:", d.safe("Justificacion - Experiencia Profesional")],
+      
       ["2e. Cargos Academicos:", d.safe("2e. Experiencia en Cargos Academico")],
-      ["Articulos indexados:", d.safe("Detalle de articulos indexados")],
-      ["Libros / obras:", d.safe("Detalle de libros / obras")],
+      ["Justificacion 2e:", d.safe("Justificacion - Cargos Academico Administrativos")],
+      
+      ["3a. Articulos Revistas:", d.safe("3a. Articulos en Revistas Indexadas")],
+      ["Detalle Articulos:", d.safe("Detalle de articulos indexados")],
+      
+      ["3b. Libros / Obras:", d.safe("3b. Libros, Obras, Software")],
+      ["Detalle Libros / Obras:", d.safe("Detalle de libros / obras")],
+      
       ["Observaciones:", d.safe("Observaciones Generales del Evaluador")]
     ];
     for (var i = 0; i < data.length; i++) {
