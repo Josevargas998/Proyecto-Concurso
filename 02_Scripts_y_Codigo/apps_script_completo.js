@@ -1,8 +1,9 @@
 // =====================================================================
 // VARIABLES GLOBALES
 // =====================================================================
-var SS_ID = "1fXU5t9fmDfXwskFs42r1eZNZa0KCxNo1Li77yrDpyvY";
-var TPL_FORM3_ID = "1AsZXFF6IC4Ue5FNeGmfRTVk3-qAvGABxGw-hEgkmscM";
+var SS_ID        = "1fXU5t9fmDfXwskFs42r1eZNZa0KCxNo1Li77yrDpyvY";
+var TPL_FORM2_ID = "1zMog_h7OCTm5thWbjCFP6J5D6fiWh9RJL9NHQHl29Mo"; // Plantilla Lista de Chequeo
+var TPL_FORM3_ID = "1AsZXFF6IC4Ue5FNeGmfRTVk3-qAvGABxGw-hEgkmscM"; // Plantilla Hoja de Calificacion
 
 var FORM_IDS = {
   2: "1xoVPJ8jAjrUibp-jH8zIhmdNe6r7Ilx9aPiFQUETSI4",
@@ -42,7 +43,9 @@ function getFilaDatos(hojaName) {
 }
 
 // =====================================================================
-// FORMULARIO 2: VERIFICACION DE REQUISITOS (Doc)
+// FORMULARIO 2: VERIFICACION DE REQUISITOS
+// Copia la plantilla Google Doc (TPL_FORM2_ID) y llena los datos.
+// Los logos y el formato se preservan automaticamente.
 // =====================================================================
 function onFormSubmit_F2(e) {
   try {
@@ -51,9 +54,7 @@ function onFormSubmit_F2(e) {
     var nombre   = d.safe("Nombre Completo del Candidato");
     var prog     = d.safe("Programa / Area del Concurso");
     var perfil   = d.safe("Perfil del Cargo");
-    var fecha    = d.safe("Fecha de Verificacion");
     var obsGen   = d.safe("Observaciones Generales de la Verificacion");
-    var concepto = d.safe("Concepto Final");
 
     var fac = prog.indexOf("-") > -1 ? prog.split("-")[0].trim() : prog;
     var prg = prog.indexOf("-") > -1 ? prog.split("-")[1].trim() : prog;
@@ -64,41 +65,34 @@ function onFormSubmit_F2(e) {
       d.hoja.getRange(1, colEnlace).setValue("Enlace Documento");
     }
 
-    var doc  = DocumentApp.create("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
-    var body = doc.getBody();
-    body.setMarginTop(40);
-    body.setMarginBottom(40);
-    body.setMarginLeft(54);
-    body.setMarginRight(54);
+    // ── 1. COPIAR PLANTILLA (logos y formato intactos) ───────────────
+    var copia   = DriveApp.getFileById(TPL_FORM2_ID)
+                    .makeCopy("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
+    var copyDoc = DocumentApp.openById(copia.getId());
+    var body    = copyDoc.getBody();
 
-    // ── TITULOS ──────────────────────────────────────────────────────
-    var p1 = body.appendParagraph("ETAPA 2 - VERIFICACION DE REQUISITOS DEL PERFIL");
-    p1.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    p1.editAsText().setFontFamily("Arial").setFontSize(13).setBold(true);
+    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
+    var paras = body.getParagraphs();
+    for (var p = 0; p < paras.length; p++) {
+      var txt = paras[p].getText();
+      var low = txt.toLowerCase();
 
-    var p2 = body.appendParagraph("CONCURSO PUBLICO DE MERITOS 2026 - UNIVERSIDAD DEL QUINDIO");
-    p2.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    p2.editAsText().setFontFamily("Arial").setFontSize(11).setBold(true);
-
-    body.appendParagraph("");
-
-    // ── DATOS DEL CANDIDATO ──────────────────────────────────────────
-    // setBold(startOffset, endOffset, bold) — orden correcto
-    function agregarDato(etiqueta, valor) {
-      var linea = body.appendParagraph(etiqueta + String(valor || "").toUpperCase());
-      linea.editAsText().setFontFamily("Arial").setFontSize(10);
-      linea.editAsText().setBold(0, etiqueta.length - 1, true);
+      if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
+        // NOMBRE y CC en la misma linea (preservar estructura de la plantilla)
+        paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
+                          "                                         C.C. " + cedula);
+      } else if (low.indexOf("facultad de") >= 0) {
+        paras[p].setText("FACULTAD DE " + fac.toUpperCase());
+      } else if (low.indexOf("programa:") >= 0 && low.indexOf("area") < 0) {
+        paras[p].setText("PROGRAMA: " + prg.toUpperCase());
+      } else if (low.indexOf("area o linea:") >= 0) {
+        paras[p].setText("AREA O LINEA: " + perfil.toUpperCase());
+      } else if (txt.indexOf("____") >= 0 && low.indexOf("observaciones") < 0) {
+        paras[p].setText(obsGen || "");
+      }
     }
-    agregarDato("NOMBRE: ", nombre);
-    agregarDato("C.C.: ", cedula);
-    agregarDato("FACULTAD DE: ", fac);
-    agregarDato("PROGRAMA: ", prg);
-    agregarDato("AREA O LINEA (PERFIL): ", perfil);
-    agregarDato("FECHA DE VERIFICACION: ", fecha);
 
-    body.appendParagraph("");
-
-    // ── TABLA DE REQUISITOS ──────────────────────────────────────────
+    // ── 3. LLENAR TABLA DE REQUISITOS ────────────────────────────────
     var REQS = [
       "1. Formato de Inscripcion firmado por el aspirante",
       "2. Hoja de Vida UQ (Formato GH-FOR-006)",
@@ -113,111 +107,63 @@ function onFormSubmit_F2(e) {
       "11. Documentos debidamente foliados"
     ];
 
-    var tabla = body.appendTable();
+    var tables = body.getTables();
 
-    // Encabezado azul oscuro con texto blanco
-    var thdr = tabla.appendTableRow();
-    var cH1  = thdr.appendTableCell("REQUISITOS DEL PERFIL");
-    var cH2  = thdr.appendTableCell("OBSERVACIONES");
-    var cH3  = thdr.appendTableCell("CUMPLE");
-    cH1.setBackgroundColor("#003366");
-    cH2.setBackgroundColor("#003366");
-    cH3.setBackgroundColor("#003366");
-    cH1.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true).setForegroundColor("#FFFFFF");
-    cH2.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true).setForegroundColor("#FFFFFF");
-    cH3.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true).setForegroundColor("#FFFFFF");
-    // NOTA: TableCell no tiene setAlignment() — se usa el Paragraph interno
-    cH3.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-    var cumpleTodos = true;
-
-    for (var i = 0; i < REQS.length; i++) {
-      var vReq    = d.safe(REQS[i]);
-      var obsItem = d.safe("Observaciones - " + REQS[i].split(".")[0]);
-      var cumple  = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
-                     vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
-      if (cumple === "NO") cumpleTodos = false;
-
-      var filaT = tabla.appendTableRow();
-      var cReq  = filaT.appendTableCell(REQS[i]);
-      var cObs  = filaT.appendTableCell(obsItem || "");
-      var cCump = filaT.appendTableCell(cumple);
-
-      cReq.editAsText().setFontFamily("Arial").setFontSize(9);
-      cObs.editAsText().setFontFamily("Arial").setFontSize(9);
-      cCump.editAsText().setFontFamily("Arial").setFontSize(11).setBold(true);
-      // Centrar via el Paragraph interno de la celda
-      cCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-      // VERDE para SI, ROJO para NO
-      cCump.setBackgroundColor(cumple === "SI" ? "#b7e1cd" : "#f4cccc");
-
-      // Filas alternadas
-      if (i % 2 === 1) {
-        cReq.setBackgroundColor("#eef2f7");
-        cObs.setBackgroundColor("#eef2f7");
+    // Buscar la tabla de requisitos: la que tiene 3 columnas y al menos 10 filas
+    var reqTable = null;
+    for (var t = 0; t < tables.length; t++) {
+      if (tables[t].getNumRows() >= 10 && tables[t].getRow(0).getNumCells() >= 3) {
+        reqTable = tables[t];
+        break;
       }
     }
 
-    body.appendParagraph("");
+    var cumpleTodos = true;
+    if (reqTable) {
+      for (var i = 0; i < REQS.length && i < reqTable.getNumRows() - 1; i++) {
+        var row     = reqTable.getRow(i + 1); // Fila 0 es encabezado
+        var vReq    = d.safe(REQS[i]);
+        var obsItem = d.safe("Observaciones - " + (i + 1));
+        var cumple  = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
+                       vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
+        if (cumple === "NO") cumpleTodos = false;
 
-    // ── TABLA RESUMEN CONCEPTO FINAL ─────────────────────────────────
-    var tabRes = body.appendTable();
-    var rRes   = tabRes.appendTableRow();
-    var cDesc  = rRes.appendTableCell("CONCEPTO FINAL: " + (concepto || (cumpleTodos ? "CUMPLE" : "NO CUMPLE")));
-    var cSI    = rRes.appendTableCell("SI");
-    var cNO    = rRes.appendTableCell("NO");
-    cDesc.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
-    cSI.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
-    cNO.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
-    cSI.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    cNO.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    cSI.setBackgroundColor(cumpleTodos  ? "#b7e1cd" : "#ffffff");
-    cNO.setBackgroundColor(!cumpleTodos ? "#f4cccc"  : "#ffffff");
+        // Columna OBSERVACIONES (col 1)
+        row.getCell(1).setText(obsItem || "");
 
-    body.appendParagraph("");
+        // Columna CUMPLE (col 2): VERDE o ROJO
+        var cCump = row.getCell(2);
+        cCump.setText(cumple);
+        cCump.setBackgroundColor(cumple === "SI" ? "#b7e1cd" : "#f4cccc");
+        cCump.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+        cCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      }
+    }
 
-    // ── OBSERVACIONES GENERALES ──────────────────────────────────────
-    var pObsT = body.appendParagraph("OBSERVACIONES GENERALES:");
-    pObsT.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
-    var pObs  = body.appendParagraph(obsGen || "");
-    pObs.editAsText().setFontFamily("Arial").setFontSize(10);
-    body.appendParagraph("_________________________________________________________________________");
-    body.appendParagraph("_________________________________________________________________________");
-    body.appendParagraph("");
+    // ── 4. TABLA "CUMPLE CON TODOS LOS REQUISITOS" ───────────────────
+    // Buscar: 2 filas y 3 columnas
+    for (var t = 0; t < tables.length; t++) {
+      if (tables[t].getNumRows() === 2 && tables[t].getRow(0).getNumCells() >= 3) {
+        var dataRow = tables[t].getRow(1);
+        var siCell  = dataRow.getCell(1);
+        var noCell  = dataRow.getCell(2);
 
-    // ── TABLA DE FIRMAS ──────────────────────────────────────────────
-    var tabFirmas = body.appendTable();
+        siCell.setText(cumpleTodos  ? "X" : "");
+        noCell.setText(!cumpleTodos ? "X" : "");
+        siCell.setBackgroundColor(cumpleTodos  ? "#b7e1cd" : "#ffffff");
+        noCell.setBackgroundColor(!cumpleTodos ? "#f4cccc"  : "#ffffff");
+        siCell.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+        noCell.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+        siCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        noCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        break;
+      }
+    }
 
-    var fhdr = tabFirmas.appendTableRow();
-    var fh1  = fhdr.appendTableCell("REVISION");
-    var fh2  = fhdr.appendTableCell("VERIFICACION");
-    fh1.setBackgroundColor("#003366");
-    fh2.setBackgroundColor("#003366");
-    fh1.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true).setForegroundColor("#FFFFFF");
-    fh2.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true).setForegroundColor("#FFFFFF");
-    fh1.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    fh2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    copyDoc.saveAndClose();
 
-    var fr1 = tabFirmas.appendTableRow();
-    var ff1 = fr1.appendTableCell("NOMBRE Y FIRMA\nMIEMBRO COMISION\n\n\n");
-    var ff2 = fr1.appendTableCell("NOMBRE Y FIRMA\nFUNCIONARIO ASUNTOS PROFESORALES\n\n\n");
-    ff1.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
-    ff2.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
-    ff1.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    ff2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-    var fr2 = tabFirmas.appendTableRow();
-    var fv1 = fr2.appendTableCell("Vo.Bo. COORDINADOR COMISION\n\n\n");
-    var fv2 = fr2.appendTableCell("Vo.Bo. JEFE OFICINA ASUNTOS PROFESORALES\n\n\n");
-    fv1.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
-    fv2.editAsText().setFontFamily("Arial").setFontSize(9).setBold(true);
-    fv1.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    fv2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-    doc.saveAndClose();
     d.hoja.getRange(d.ult, colEnlace).setValue(
-      "https://docs.google.com/document/d/" + doc.getId() + "/edit"
+      "https://docs.google.com/document/d/" + copia.getId() + "/edit"
     );
 
   } catch(err) { Logger.log("Error F2: " + err); }
