@@ -111,23 +111,25 @@ function onFormSubmit_F2(e) {
     }
 
     // ── 3. LLENAR TABLA DE REQUISITOS ────────────────────────────────
-    var REQS = [
-      "1. Formato de Inscripcion firmado por el aspirante",
-      "2. Hoja de Vida UQ (Formato GH-FOR-006)",
-      "3. Fotocopia de cedula y libreta militar",
-      "4. Fotocopia de matricula o tarjeta profesional",
-      "5. Certificados disciplinarios, judiciales o fiscales vigentes",
-      "6. Certificado de experiencia docente universitaria",
-      "7. Titulo de Pregrado requerido por el perfil",
-      "8. Titulo de Posgrado requerido por el perfil",
-      "9. Experiencia minima en el area del concurso (segun perfil)",
-      "10. Tema de disertacion presentado",
-      "11. Documentos debidamente foliados"
+    // Mapeo explicito: cada entrada define la fila fisica del doc (en orden a,b,c,d,e...)
+    // cumpleKey: busca en columnas de cumplimiento | obsKey: busca SOLO en columnas Observaciones
+    var mapeoRequisitos = [
+      { cumpleKey: "(a) Formato de inscripcion",              obsKey: "Formato de Inscripcion" },
+      { cumpleKey: "(b) Hoja de Vida UQ",                     obsKey: "Hoja de Vida UQ" },
+      { cumpleKey: "(c) Fotocopia del titulo de pregrado",    obsKey: "Titulo Pregrado" },
+      { cumpleKey: "(d) Fotocopia de titulos o actas de grado de posgrado", obsKey: "Titulo Posgrado" },
+      { cumpleKey: "(e) Fotocopia de la cedula",              obsKey: "Cedula" },
+      { cumpleKey: "(f) Fotocopia de matricula",              obsKey: "Matricula" },
+      { cumpleKey: "(g) Certificado de inhabilidades por delitos", obsKey: "delitos" },
+      { cumpleKey: "(h) Certificado de registro de deudores", obsKey: "deudores" },
+      { cumpleKey: "(i) Certificacion de experiencia especifica en docencia", obsKey: "docencia" },
+      { cumpleKey: "(m) Certificacion de experiencia profesional", obsKey: "profesional" },
+      { cumpleKey: "(n) Certificacion de suficiencia linguistica", obsKey: "linguistica" },
+      { cumpleKey: "Documentos debidamente foliados",          obsKey: "foliados" },
+      { cumpleKey: "5. Certificados disciplinarios",           obsKey: "disciplinarios" }
     ];
 
     var tables = body.getTables();
-
-    // Buscar la tabla de requisitos: la que tiene 3 columnas y al menos 10 filas
     var reqTable = null;
     for (var t = 0; t < tables.length; t++) {
       if (tables[t].getNumRows() >= 10 && tables[t].getRow(0).getNumCells() >= 3) {
@@ -138,30 +140,40 @@ function onFormSubmit_F2(e) {
 
     var cumpleTodos = true;
 
-    // Recopilar en orden las columnas de observaciones por requisito
-    // (se excluye "observaciones generales" que es el resumen final)
-    var obsCols = [];
+    // Pre-indexar SOLO las columnas que comienzan con "Observaciones"
+    // para evitar que d.safe() encuentre el valor CUMPLE en vez de la observacion
+    var obsIndex = {}; // { palabra_clave_lower -> valor_celda }
     for (var k = 0; k < d.enc.length; k++) {
-      var hdr = String(d.enc[k]).toLowerCase();
-      if (hdr.indexOf("observaci") >= 0 && hdr.indexOf("general") < 0) {
-        obsCols.push(k);
+      var hdr = String(d.enc[k]).trim();
+      if (hdr.toLowerCase().indexOf("observaci") === 0 ||
+          (hdr.toLowerCase().indexOf("observaci") >= 0 && hdr.toLowerCase().indexOf("general") < 0)) {
+        // Guardar el header completo en minusculas como clave de busqueda
+        obsIndex[hdr.toLowerCase()] = String(d.fila[k] || "").trim();
       }
     }
-    Logger.log("Columnas de observaciones encontradas: " + obsCols.length);
+
+    function buscarObservacion(obsKey) {
+      var k = obsKey.toLowerCase();
+      // Buscar coincidencia exacta primero
+      for (var hdr in obsIndex) {
+        if (hdr.indexOf(k) >= 0) return obsIndex[hdr];
+      }
+      return "";
+    }
 
     if (reqTable) {
-      for (var i = 0; i < REQS.length && i < reqTable.getNumRows() - 1; i++) {
-        var row     = reqTable.getRow(i + 1); // Fila 0 es encabezado
-        var vReq    = d.safe(REQS[i]);
-        var obsItem = obsCols.length > i ? String(d.fila[obsCols[i]] || "").trim() : "";
+      for (var i = 0; i < mapeoRequisitos.length && i < reqTable.getNumRows() - 1; i++) {
+        var item    = mapeoRequisitos[i];
+        var row     = reqTable.getRow(i + 1);
+        var vReq    = d.safe(item.cumpleKey);
+        var obsItem = buscarObservacion(item.obsKey);
         var cumple  = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
                        vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
+        if (!vReq) cumple = "NO";
         if (cumple === "NO") cumpleTodos = false;
 
-        // Columna OBSERVACIONES (col 1)
         row.getCell(1).setText(obsItem || "");
 
-        // Columna CUMPLE (col 2): VERDE o ROJO
         var cCump = row.getCell(2);
         cCump.setText(cumple);
         cCump.setBackgroundColor(cumple === "SI" ? "#b7e1cd" : "#f4cccc");
@@ -171,13 +183,11 @@ function onFormSubmit_F2(e) {
     }
 
     // ── 4. TABLA "CUMPLE CON TODOS LOS REQUISITOS" ───────────────────
-    // Buscar: 2 filas y 3 columnas
     for (var t = 0; t < tables.length; t++) {
       if (tables[t].getNumRows() === 2 && tables[t].getRow(0).getNumCells() >= 3) {
         var dataRow = tables[t].getRow(1);
         var siCell  = dataRow.getCell(1);
         var noCell  = dataRow.getCell(2);
-
         siCell.setText(cumpleTodos  ? "X" : "");
         noCell.setText(!cumpleTodos ? "X" : "");
         siCell.setBackgroundColor(cumpleTodos  ? "#b7e1cd" : "#ffffff");
@@ -191,7 +201,6 @@ function onFormSubmit_F2(e) {
     }
 
     copyDoc.saveAndClose();
-
     d.hoja.getRange(d.ult, colEnlace).setValue(
       "https://docs.google.com/document/d/" + copia.getId() + "/edit"
     );
@@ -359,11 +368,14 @@ function instalarTodosLosTriggers() {
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) ScriptApp.deleteTrigger(triggers[i]);
 
+  // F1: genera enlaces automaticamente al enviar Formulario 1
+  ScriptApp.newTrigger("onFormSubmit_F1").forSpreadsheet(ss).onFormSubmit().create();
+  // F2, F3, F4: generan documentos al enviar cada formulario
   ScriptApp.newTrigger("onFormSubmit_F2").forSpreadsheet(ss).onFormSubmit().create();
   ScriptApp.newTrigger("onFormSubmit_F3").forSpreadsheet(ss).onFormSubmit().create();
   ScriptApp.newTrigger("onFormSubmit_F4").forSpreadsheet(ss).onFormSubmit().create();
 
-  Logger.log("Triggers de Formularios 2, 3 y 4 instalados correctamente");
+  Logger.log("Triggers de Formularios 1, 2, 3 y 4 instalados correctamente");
 }
 
 // =====================================================================
@@ -376,10 +388,55 @@ function onOpen() {
     .addToUi();
 }
 
-// Trigger: se activa cuando un candidato envia el Formulario 1
-function onFormSubmit(e) {
-  Utilities.sleep(2000);
-  generarTodosLosEnlaces();
+// Trigger: genera enlaces solo cuando el envio viene del Formulario 1
+function onFormSubmit_F1(e) {
+  try {
+    var nombreHoja = e.range.getSheet().getName();
+    if (nombreHoja !== "Respuestas de formulario 1") return;
+    Utilities.sleep(2000);
+    generarEnlacesFila(e.range.getRow());
+  } catch(err) { Logger.log("Error en onFormSubmit_F1: " + err); }
+}
+
+// Genera enlaces SOLO para la fila recien enviada (rapido)
+function generarEnlacesFila(numFila) {
+  var sheet = SpreadsheetApp.openById(SS_ID).getSheetByName("Respuestas de formulario 1");
+  if (!sheet) return;
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var fila    = sheet.getRange(numFila, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colCedula = -1, colNombre = -1, colPrograma = -1, colPerfil = -1;
+  var colLink2  = headers.indexOf("Llenar Formulario 2");
+  var colLink3  = headers.indexOf("Llenar Formulario 3");
+  var colLink4  = headers.indexOf("Llenar Formulario 4");
+  for (var i = 0; i < headers.length; i++) {
+    var h = String(headers[i]).toLowerCase().trim();
+    if (h.indexOf("cedula") !== -1 && colCedula === -1) colCedula = i;
+    else if (h.indexOf("nombre") !== -1 && h.indexOf("recibe") === -1 &&
+             h.indexOf("evaluador") === -1 && h.indexOf("miembro") === -1 && colNombre === -1) colNombre = i;
+    else if (h.indexOf("programa") !== -1 && colPrograma === -1) colPrograma = i;
+    else if (h.indexOf("perfil") !== -1 && colPerfil === -1) colPerfil = i;
+  }
+  if (colCedula === -1 || colNombre === -1) return;
+  if (colLink2 === -1) { colLink2 = headers.length; sheet.getRange(1, colLink2+1).setValue("Llenar Formulario 2"); headers.push("Llenar Formulario 2"); }
+  if (colLink3 === -1) { colLink3 = headers.length; sheet.getRange(1, colLink3+1).setValue("Llenar Formulario 3"); headers.push("Llenar Formulario 3"); }
+  if (colLink4 === -1) { colLink4 = headers.length; sheet.getRange(1, colLink4+1).setValue("Llenar Formulario 4"); headers.push("Llenar Formulario 4"); }
+  var cedula   = String(fila[colCedula]  || "").trim();
+  var nombre   = String(fila[colNombre]  || "").trim();
+  var programa = colPrograma !== -1 ? String(fila[colPrograma] || "").trim() : "";
+  var perfil   = colPerfil   !== -1 ? String(fila[colPerfil]   || "").trim() : "";
+  if (!cedula || !nombre) return;
+  var f2 = FormApp.openById(FORM_IDS[2]);
+  var f3 = FormApp.openById(FORM_IDS[3]);
+  var f4 = FormApp.openById(FORM_IDS[4]);
+  var map2 = getItemsMapping(f2);
+  var map3 = getItemsMapping(f3);
+  var map4 = getItemsMapping(f4);
+  // Form 2 usa el nombre del programa SIN el prefijo de facultad
+  var programaF2 = programa.indexOf("-") > -1 ? programa.split("-").slice(1).join("-").trim() : programa;
+  sheet.getRange(numFila, colLink2+1).setValue(buildUrl(f2, map2, cedula, nombre, programaF2, perfil));
+  sheet.getRange(numFila, colLink3+1).setValue(buildUrl(f3, map3, cedula, nombre, programa, perfil));
+  sheet.getRange(numFila, colLink4+1).setValue(buildUrl(f4, map4, cedula, nombre, programa, perfil));
+  Logger.log("Enlaces generados para fila " + numFila + ": " + nombre);
 }
 
 function generarTodosLosEnlaces() {
@@ -535,4 +592,73 @@ function buscarOpcion(choices, valor) {
     }
   }
   return null;
+}
+
+// =====================================================================
+// ACTUALIZAR PLANTILLA GOOGLE DOC - FORMULARIO 2
+// Ejecutar UNA SOLA VEZ cuando cambies el orden de los requisitos.
+// Reconstruye la tabla en orden ALFABETICO ESTRICTO: a,b,c,d,e,f,g,h,i,m,n
+// IMPORTANTE: despues de ejecutar esta funcion, ejecuta onFormSubmit_F2
+//             para que el mapeo del script coincida con la plantilla.
+// =====================================================================
+function actualizarPlantillaF2() {
+  var doc  = DocumentApp.openById(TPL_FORM2_ID);
+  var body = doc.getBody();
+
+  // Orden ALFABETICO ESTRICTO segun Acuerdo 029 - Articulo Noveno
+  var REQUISITOS = [
+    "(a) Formato de inscripcion (A-GH-03-F-13) diligenciado y firmado por el aspirante",
+    "(b) Hoja de Vida UQ (VIG-M-DO-03-F-12) diligenciada y firmada por el aspirante",
+    "(c) Fotocopia del titulo de pregrado exigido para el perfil o Acta de Grado",
+    "(d) Fotocopia de titulos o actas de grado de posgrado exigidos para el perfil",
+    "(e) Fotocopia de la cedula y libreta militar (Ley 1861/2017)",
+    "(f) Fotocopia de matricula o tarjeta profesional (o constancia de tramite)",
+    "(g) Certificado de inhabilidades por delitos sexuales",
+    "(h) Certificado de registro de deudores alimentarios morosos (REDAM)",
+    "(i) Certificacion de experiencia especifica en docencia universitaria (minimo 3 anos)",
+    "(m) Certificacion de experiencia profesional diferente a docencia (minimo 5 anos - Art. 7 literal c)",
+    "(n) Certificacion de suficiencia linguistica nivel B1 en ingles",
+    "Documentos debidamente foliados (Art. 9 Acuerdo 029)"
+  ];
+
+  var tables   = body.getTables();
+  var reqTable = null;
+  for (var t = 0; t < tables.length; t++) {
+    if (tables[t].getNumRows() >= 8 && tables[t].getRow(0).getNumCells() >= 3) {
+      reqTable = tables[t];
+      break;
+    }
+  }
+
+  if (!reqTable) {
+    Logger.log("No se encontro la tabla de requisitos en la plantilla.");
+    return;
+  }
+
+  Logger.log("Tabla encontrada con " + reqTable.getNumRows() + " filas. Reconstruyendo...");
+
+  // Eliminar TODAS las filas de datos (dejar solo el encabezado en fila 0)
+  var filasActuales = reqTable.getNumRows();
+  for (var f = filasActuales - 1; f >= 1; f--) {
+    reqTable.removeRow(f);
+  }
+
+  // Insertar las 12 filas en orden alfabetico estricto
+  for (var i = 0; i < REQUISITOS.length; i++) {
+    var nuevaFila   = reqTable.appendTableRow();
+
+    var celdaReq    = nuevaFila.appendTableCell(REQUISITOS[i]);
+    celdaReq.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
+    celdaReq.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.LEFT);
+
+    var celdaObs    = nuevaFila.appendTableCell("");
+    celdaObs.editAsText().setFontFamily("Arial").setFontSize(9);
+
+    var celdaCumple = nuevaFila.appendTableCell("");
+    celdaCumple.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+    celdaCumple.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  }
+
+  doc.saveAndClose();
+  Logger.log("Plantilla actualizada correctamente con " + REQUISITOS.length + " requisitos en orden a,b,c,d,e,f,g,h,i,m,n.");
 }
