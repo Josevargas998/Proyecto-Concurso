@@ -70,8 +70,49 @@ function onFormSubmit_F2(e) {
     var perfil   = d.safe("Perfil del Cargo");
     var obsGen   = d.safe("Observaciones Generales de la Verificacion");
 
-    var fac = prog.indexOf("-") > -1 ? prog.split("-")[0].trim() : prog;
-    var prg = prog.indexOf("-") > -1 ? prog.split("-")[1].trim() : prog;
+    // Mapa explicito programa -> facultad
+    // Necesario porque algunos programas no tienen guion (ej: Seguridad y Salud en el Trabajo)
+    // y otros tienen guion en su nombre (ej: Comunicacion Social - Periodismo)
+    var PROG_FACULTAD = {
+      "licenciatura en educacion fisica":    "CIENCIAS DE LA EDUCACION",
+      "educacion fisica":                    "CIENCIAS DE LA EDUCACION",
+      "licenciatura en lenguas modernas":    "CIENCIAS DE LA EDUCACION",
+      "lenguas modernas":                    "CIENCIAS DE LA EDUCACION",
+      "licenciatura en literatura":          "CIENCIAS DE LA EDUCACION",
+      "literatura y lengua castellana":      "CIENCIAS DE LA EDUCACION",
+      "ingenieria civil":                    "INGENIERIA",
+      "ingenieria electronica":              "INGENIERIA",
+      "ingenieria de sistemas":              "INGENIERIA",
+      "gerontologia":                        "CIENCIAS DE LA SALUD",
+      "medicina":                            "CIENCIAS DE LA SALUD",
+      "enfermeria":                          "CIENCIAS DE LA SALUD",
+      "seguridad y salud en el trabajo":     "CIENCIAS DE LA SALUD",
+      "ciencias de la informacion":          "CIENCIAS HUMANAS Y BELLAS ARTES",
+      "archivistica":                        "CIENCIAS HUMANAS Y BELLAS ARTES",
+      "trabajo social":                      "CIENCIAS HUMANAS Y BELLAS ARTES",
+      "comunicacion social":                 "CIENCIAS HUMANAS Y BELLAS ARTES",
+      "periodismo":                          "CIENCIAS HUMANAS Y BELLAS ARTES",
+      "biologia":                            "CIENCIAS BASICAS Y TECNOLOGIAS",
+      "fisica":                              "CIENCIAS BASICAS Y TECNOLOGIAS",
+      "administracion financiera":           "CIENCIAS ECONOMICAS Y ADMINISTRATIVAS",
+      "administracion de negocios":          "CIENCIAS ECONOMICAS Y ADMINISTRATIVAS"
+    };
+
+    // Buscar la facultad correcta segun el nombre del programa
+    function getFacultad(nombrePrograma) {
+      var pLow = (nombrePrograma || "").toLowerCase()
+                   .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quitar tildes
+      for (var clave in PROG_FACULTAD) {
+        if (pLow.indexOf(clave) >= 0) return PROG_FACULTAD[clave];
+      }
+      // Fallback: si Form 1 envio "FACULTAD - Programa", usar la parte izquierda del guion
+      if (nombrePrograma.indexOf("-") > -1) return nombrePrograma.split("-")[0].trim().toUpperCase();
+      return ""; // desconocida
+    }
+
+    var fac = getFacultad(prog);
+    var prg = prog; // el programa siempre es el nombre completo
+
 
     var colEnlace = d.getColIndex("Enlace Documento");
     if (colEnlace === -1) {
