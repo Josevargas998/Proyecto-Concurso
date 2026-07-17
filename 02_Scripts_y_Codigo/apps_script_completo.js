@@ -68,7 +68,11 @@ function onFormSubmit_F2(e) {
     var nombre   = d.safe("Nombre Completo del Candidato");
     var prog     = d.safe("Programa / Area del Concurso");
     var perfil   = d.safe("Perfil del Cargo");
-    var obsGen   = d.safe("Observaciones Generales de la Verificacion");
+    var obsGen        = d.safe("Observaciones Generales");
+    var conceptoFinal = d.safe("Concepto Final");
+    // El concepto final lo decide el evaluador en el formulario
+    // SI el concepto contiene "CUMPLE CON TODOS" → tabla final = SI, de lo contrario NO
+    var cumpleTodos = conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0;
 
     // Mapa explicito programa -> facultad
     // Necesario porque algunos programas no tienen guion (ej: Seguridad y Salud en el Trabajo)
@@ -182,25 +186,20 @@ function onFormSubmit_F2(e) {
       }
     }
 
-    var cumpleTodos = true;
-
     // Pre-indexar SOLO las columnas que comienzan con "Observaciones"
     // para evitar que d.safe() encuentre el valor CUMPLE en vez de la observacion
-    var obsIndex = {}; // { palabra_clave_lower -> valor_celda }
+    var obsIndex = {};
     for (var k = 0; k < d.enc.length; k++) {
       var hdr = String(d.enc[k]).trim();
-      if (hdr.toLowerCase().indexOf("observaci") === 0 ||
-          (hdr.toLowerCase().indexOf("observaci") >= 0 && hdr.toLowerCase().indexOf("general") < 0)) {
-        // Guardar el header completo en minusculas como clave de busqueda
+      if (hdr.toLowerCase().indexOf("observaci") >= 0 && hdr.toLowerCase().indexOf("general") < 0) {
         obsIndex[hdr.toLowerCase()] = String(d.fila[k] || "").trim();
       }
     }
 
     function buscarObservacion(obsKey) {
-      var k = obsKey.toLowerCase();
-      // Buscar coincidencia exacta primero
+      var kk = obsKey.toLowerCase();
       for (var hdr in obsIndex) {
-        if (hdr.indexOf(k) >= 0) return obsIndex[hdr];
+        if (hdr.indexOf(kk) >= 0) return obsIndex[hdr];
       }
       return "";
     }
@@ -211,16 +210,26 @@ function onFormSubmit_F2(e) {
         var row     = reqTable.getRow(i + 1);
         var vReq    = d.safe(item.cumpleKey);
         var obsItem = buscarObservacion(item.obsKey);
-        var cumple  = (vReq.toUpperCase().indexOf("CUMPLE") >= 0 &&
-                       vReq.toUpperCase().indexOf("NO CUMPLE") < 0) ? "SI" : "NO";
-        if (!vReq) cumple = "NO";
-        if (cumple === "NO") cumpleTodos = false;
+        // Determinar SI o NO segun lo que marco el evaluador en el formulario
+        var cumple;
+        if (!vReq) {
+          cumple = "";
+        } else if (vReq.toUpperCase().indexOf("NO CUMPLE") >= 0) {
+          cumple = "NO";
+        } else if (vReq.toUpperCase().indexOf("CUMPLE") >= 0) {
+          cumple = "SI";
+        } else if (vReq.toUpperCase().indexOf("PENDIENTE") >= 0) {
+          cumple = "PENDIENTE";
+        } else {
+          cumple = "";
+        }
 
         row.getCell(1).setText(obsItem || "");
 
         var cCump = row.getCell(2);
         cCump.setText(cumple);
-        cCump.setBackgroundColor(cumple === "SI" ? "#b7e1cd" : "#f4cccc");
+        var bgColor = cumple === "SI" ? "#b7e1cd" : (cumple === "PENDIENTE" ? "#fff2cc" : "#f4cccc");
+        cCump.setBackgroundColor(bgColor);
         cCump.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
         cCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
       }
