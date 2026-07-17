@@ -280,65 +280,183 @@ function onFormSubmit_F2(e) {
 }
 
 // =====================================================================
-// FORMULARIO 3: HOJA DE CALIFICACION (Sheet)
+// HELPER: Extraer puntaje numerico de una opcion del formulario
+// Las opciones tienen formato: "Descripcion -> X puntos" o "Descripcion -> X punto"
+// =====================================================================
+function extraerPuntaje(textoOpcion) {
+  if (!textoOpcion) return 0;
+  // Buscar patron "-> X puntos" o "-> X punto" al final del string
+  var match = textoOpcion.match(/[\u2192>]\s*([\d.]+)\s*punt/i);
+  if (match) return parseFloat(match[1]);
+  return 0;
+}
+
+// =====================================================================
+// FORMULARIO 3: HOJA DE CALIFICACION - Acuerdo 029 de 2026
 // =====================================================================
 function onFormSubmit_F3(e) {
   try {
     var d = getFilaDatos("Respuestas de formulario 3");
-    var cedula = d.safe("Cedula del Candidato");
-    var nombre = d.safe("Nombre Completo del Candidato");
+    var cedula   = d.safe("Cedula del Candidato");
+    var nombre   = d.safe("Nombre Completo del Candidato");
+    var prog     = d.safe("Programa / Area del Concurso");
+    var perfil   = d.safe("Perfil del Cargo");
+    var evaluador = d.safe("Nombre del Evaluador");
+
     var colEnlace = d.getColIndex("Enlace Documento");
     if (colEnlace === -1) { colEnlace = d.enc.length + 1; d.hoja.getRange(1, colEnlace).setValue("Enlace Documento"); }
 
+    // ── LEER CAMPOS Y CALCULAR PUNTAJES ──────────────────────────────
+    // Criterio 1: Nivel academico adicional (max 5 pts)
+    var v1  = d.safe("Nivel Academico Acreditado");
+    var p1  = extraerPuntaje(v1);
+
+    // Criterio 2a: Experiencia docente (max 5 pts)
+    var v2a = d.safe("2a. Experiencia Docente");
+    var p2a = extraerPuntaje(v2a);
+
+    // Criterio 2b: Extension - coordinador + facilitador + labor (max 8 pts)
+    var v2bCoord = d.safe("2b. Participacion como Coordinador");
+    var v2bFacil = d.safe("2b. Participacion como Facilitador");
+    var v2bLabor = d.safe("2b. Participacion por labor");
+    var p2b = Math.min(8, extraerPuntaje(v2bCoord) + extraerPuntaje(v2bFacil) + extraerPuntaje(v2bLabor));
+
+    // Criterio 2c: Experiencia profesional diferente (max 2 pts)
+    var v2c = d.safe("2c. Experiencia Profesional Diferente");
+    var p2c = extraerPuntaje(v2c);
+
+    // Criterio 2d: Cargos academico-administrativos (max 2 pts)
+    var v2d = d.safe("2d. Experiencia en Cargos Academico");
+    var p2d = extraerPuntaje(v2d);
+
+    var p2Total = Math.min(17, p2a + p2b + p2c + p2d);
+
+    // Criterio 3: Productividad academica (max 8 pts)
+    var v3a1 = d.safe("3a. Articulos en Revistas Indexadas - Categoria A1");
+    var v3a2 = d.safe("3b. Articulos en Revistas Indexadas - Categoria A2");
+    var v3lib = d.safe("3c. Libros");
+    var v3obr = d.safe("3d. Obras Artisticas");
+    var v3sof = d.safe("3e. Software");
+    var v3aud = d.safe("3f. Produccion Audiovisual");
+    var p3Total = Math.min(8,
+      extraerPuntaje(v3a1) + extraerPuntaje(v3a2) +
+      extraerPuntaje(v3lib) + extraerPuntaje(v3obr) +
+      extraerPuntaje(v3sof) + extraerPuntaje(v3aud)
+    );
+
+    var pHojaVida = Math.min(30, p1 + p2Total + p3Total);
+    var obsGen = d.safe("Observaciones Generales del Evaluador");
+
+    // ── GENERAR COPIA DEL TEMPLATE EXCEL ─────────────────────────────
     var file   = DriveApp.getFileById(TPL_FORM3_ID).makeCopy("ETAPA3_" + cedula + "_" + nombre.substring(0, 30));
     var ssCopy = SpreadsheetApp.openById(file.getId());
     var ws     = ssCopy.getSheets()[0];
 
-    var prog = d.safe("Programa / Area del Concurso");
-    var fac  = prog.indexOf("-") > -1 ? prog.split("-")[0].trim() : prog;
-    var prg  = prog.indexOf("-") > -1 ? prog.split("-")[1].trim() : prog;
+    // Mapa programa -> facultad (reutilizar logica de F2)
+    var PROG_FACULTAD_F3 = {
+      "Licenciatura en Educacion Fisica":     "FACULTAD DE CIENCIAS DE LA EDUCACION",
+      "Licenciatura en Lenguas Modernas":     "FACULTAD DE CIENCIAS DE LA EDUCACION",
+      "Licenciatura en Literatura":           "FACULTAD DE CIENCIAS DE LA EDUCACION",
+      "Ingenieria Civil":                     "FACULTAD DE INGENIERIA",
+      "Ingenieria Electronica":               "FACULTAD DE INGENIERIA",
+      "Ingenieria de Sistemas":               "FACULTAD DE INGENIERIA",
+      "Gerontologia":                         "FACULTAD DE CIENCIAS DE LA SALUD",
+      "Medicina":                             "FACULTAD DE CIENCIAS DE LA SALUD",
+      "Enfermeria":                           "FACULTAD DE CIENCIAS DE LA SALUD",
+      "Seguridad y Salud":                    "FACULTAD DE CIENCIAS DE LA SALUD",
+      "Ciencias de la Informacion":           "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+      "Trabajo Social":                       "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+      "Comunicacion Social":                  "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+      "Biologia":                             "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
+      "Fisica":                               "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
+      "Administracion Financiera":            "FACULTAD DE CIENCIAS ECONOMICAS"
+    };
+    var fac3 = "";
+    var progNorm = prog.toLowerCase();
+    for (var key3 in PROG_FACULTAD_F3) {
+      if (progNorm.indexOf(key3.toLowerCase()) >= 0) { fac3 = PROG_FACULTAD_F3[key3]; break; }
+    }
+    if (!fac3) fac3 = prog;
 
-    ws.getRange("A5").setValue("Nombre:  " + nombre);
-    ws.getRange("A6").setValue("Facultad: " + fac);
-    ws.getRange("A7").setValue("Programa: " + prg);
-    ws.getRange("A8").setValue("Area o linea: " + d.safe("Nombre del Evaluador"));
+    ws.getRange("A5").setValue("Candidato: " + nombre + "   CC: " + cedula);
+    ws.getRange("A6").setValue("Facultad: " + fac3);
+    ws.getRange("A7").setValue("Programa: " + prog);
+    ws.getRange("A8").setValue("Perfil: " + perfil + "   Evaluador: " + evaluador);
 
-    var p1 = d.safe("Puntaje Total Criterio 1");
-    var p2 = d.safe("Puntaje Total Criterio 2");
-    var p3 = d.safe("Puntaje Total Criterio 3");
+    // Puntajes en el template
     ws.getRange("D70").setValue(p1);
-    ws.getRange("D71").setValue(p2);
-    ws.getRange("D72").setValue(p3);
+    ws.getRange("D71").setValue(p2Total);
+    ws.getRange("D72").setValue(p3Total);
+    ws.getRange("C73").setValue(pHojaVida);
 
-    try {
-      var tot = parseFloat(p1.replace(",", ".")) + parseFloat(p2.replace(",", ".")) + parseFloat(p3.replace(",", "."));
-      ws.getRange("C73").setValue(tot);
-    } catch(ex) {}
-
-    var det = ssCopy.insertSheet("Detalle Evaluacion");
-    det.getRange("A1").setValue("DETALLE DE LA EVALUACION").setFontWeight("bold");
+    // ── HOJA DETALLE ─────────────────────────────────────────────────
+    var det = ssCopy.insertSheet("Detalle Evaluacion - Acuerdo 029");
+    det.getRange("A1").setValue("HOJA DE CALIFICACION — ACUERDO 029 DE 2026").setFontWeight("bold").setFontSize(12);
     det.getRange("A2").setValue("Candidato: " + nombre + "   CC: " + cedula);
-    det.getRange("A3").setValue("Evaluador: " + d.safe("Nombre del Evaluador"));
-    det.getRange("A4").setValue("Programa: " + prog);
+    det.getRange("A3").setValue("Evaluador: " + evaluador);
+    det.getRange("A4").setValue("Programa: " + prog + " — " + perfil);
+    det.getRange("A5").setValue("");
 
-    var data = [
-      ["NIVEL ACADEMICO:", d.safe("Nivel Academico Acreditado")],
-      ["Justificacion Nivel:", d.safe("Justificacion - Nivel Academico")],
-      
-      ["2a. Exp. Docente:", d.safe("2a. Experiencia Docente")],
-      ["Justificacion 2a:", d.safe("Justificacion - Experiencia Docente")],
-      
-      ["2b. Investigacion:", d.safe("2b. Experiencia en Investigacion")],
-      ["Justificacion 2b:", d.safe("Justificacion - Investigacion")],
-      
-      ["2c. Extension:", d.safe("2c. Experiencia en Extension")],
-      ["Justificacion 2c:", d.safe("Justificacion - Extension / Proyeccion")],
-      
-      ["2d. Exp. Profesional:", d.safe("2d. Experiencia Profesional Diferente")],
-      ["Justificacion 2d:", d.safe("Justificacion - Experiencia Profesional")],
-      
-      ["2e. Cargos Academicos:", d.safe("2e. Experiencia en Cargos Academico")],
-      ["Justificacion 2e:", d.safe("Justificacion - Cargos Academico Administrativos")],
+    var data029 = [
+      ["=== CRITERIO 1: NIVEL ACADEMICO ADICIONAL (max 5 pts) ===", ""],
+      ["Nivel adicional acreditado:", v1],
+      ["Justificacion:",            d.safe("Justificacion - Nivel Academico")],
+      ["PUNTAJE CRITERIO 1:",       p1],
+      ["", ""],
+      ["=== CRITERIO 2: EXPERIENCIA (max 17 pts) ===", ""],
+      ["2a. Experiencia docente:",          v2a + " [" + p2a + " pts]"],
+      ["    Justificacion 2a:",             d.safe("Justificacion - Experiencia Docente")],
+      ["2b. Coordinador proyectos ext.:",   v2bCoord],
+      ["2b. Facilitador cursos IES:",       v2bFacil],
+      ["2b. Participacion por labor:",      v2bLabor],
+      ["    Justificacion 2b:",             d.safe("Justificacion - Extension / Proyeccion")],
+      ["    Puntaje 2b subtotal:",          p2b + " pts (max 8)"],
+      ["2c. Exp. profesional != docencia:", v2c + " [" + p2c + " pts]"],
+      ["    Justificacion 2c:",             d.safe("Justificacion - Experiencia Profesional")],
+      ["2d. Cargos acad.-admin. en IES:",   v2d + " [" + p2d + " pts]"],
+      ["    Justificacion 2d:",             d.safe("Justificacion - Cargos Academico Administrativos")],
+      ["PUNTAJE CRITERIO 2:",              p2Total + " (max 17)"],
+      ["", ""],
+      ["=== CRITERIO 3: PRODUCTIVIDAD ACADEMICA (max 8 pts) ===", ""],
+      ["Articulos A1 Minciencias:",     v3a1],
+      ["Articulos A2 Minciencias:",     v3a2],
+      ["Detalle articulos:",            d.safe("Detalle de articulos indexados")],
+      ["Libros:",                       v3lib],
+      ["Obras artisticas:",             v3obr],
+      ["Software:",                     v3sof],
+      ["Produccion audiovisual:",       v3aud],
+      ["Detalle libros/obras:",         d.safe("Detalle de libros / obras")],
+      ["PUNTAJE CRITERIO 3:",           p3Total + " (max 8)"],
+      ["", ""],
+      ["=== TOTAL HOJA DE VIDA ===", ""],
+      ["Criterio 1 (max 5):",   p1],
+      ["Criterio 2 (max 17):",  p2Total],
+      ["Criterio 3 (max 8):",   p3Total],
+      ["TOTAL HOJA DE VIDA:",   pHojaVida + " / 30"],
+      ["", ""],
+      ["Observaciones del Evaluador:", obsGen]
+    ];
+
+    for (var i = 0; i < data029.length; i++) {
+      det.getRange(i + 6, 1).setValue(data029[i][0]);
+      det.getRange(i + 6, 2).setValue(data029[i][1]);
+      if (String(data029[i][0]).indexOf("===" ) >= 0) {
+        det.getRange(i + 6, 1).setFontWeight("bold").setBackground("#cfe2f3");
+        det.getRange(i + 6, 2).setBackground("#cfe2f3");
+      }
+      if (String(data029[i][0]).indexOf("PUNTAJE") >= 0 || String(data029[i][0]).indexOf("TOTAL") >= 0) {
+        det.getRange(i + 6, 1).setFontWeight("bold");
+        det.getRange(i + 6, 2).setFontWeight("bold").setBackground("#d9ead3");
+      }
+    }
+    det.setColumnWidth(1, 280);
+    det.setColumnWidth(2, 400);
+    det.autoResizeRows(1, data029.length + 6);
+
+    d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ssCopy.getId() + "/edit");
+    Logger.log("F3 OK — " + nombre + " — Total HV: " + pHojaVida + "/30");
+  } catch(err) { Logger.log("Error F3: " + err); }
+}
       
       ["3a. Articulos Revistas:", d.safe("3a. Articulos en Revistas Indexadas")],
       ["Detalle Articulos:", d.safe("Detalle de articulos indexados")],
@@ -873,73 +991,237 @@ function reordenarFormulario2() {
 }
 
 // =====================================================================
-// AGREGAR PREGUNTAS DEL CRITERIO 1 (TITULOS) AL FORMULARIO 3
-// Ejecutar una sola vez. Crea y organiza las preguntas básicas de títulos
+// CONSTRUIR FORMULARIO 3 DESDE CERO — ACUERDO 029 DE 2026 ART. 14
+// ADVERTENCIA: Borra todas las preguntas existentes y reconstruye.
+// Ejecutar UNA SOLA VEZ despues de confirmar que no hay respuestas.
 // =====================================================================
-function agregarPreguntasFaltantesF3() {
+function construirFormulario3Acuerdo029() {
   var form = FormApp.openById(FORM_IDS[3]);
+
+  // Borrar todas las preguntas existentes
   var items = form.getItems();
-  var titulosExistentes = items.map(function(item) { return item.getTitle().toLowerCase(); });
-
-  var nuevasPreguntas = [
-    // ── CRITERIO 1: TITULOS ──
-    { tipo: "TXT", titulo: "Nivel Academico Acreditado" },
-    { tipo: "TXT", titulo: "Institucion Pregrado" },
-    { tipo: "TXT", titulo: "Titulo de Pregrado" },
-    { tipo: "TXT", titulo: "Puntaje Titulo Pregrado" },
-    { tipo: "MC",  titulo: "Posgrado Requerido por el Perfil", opciones: ["Especializacion", "Maestria", "Doctorado", "No Presenta"] },
-    { tipo: "TXT", titulo: "Institucion Posgrado" },
-    { tipo: "TXT", titulo: "Titulo de Posgrado" },
-    { tipo: "TXT", titulo: "Puntaje Titulo Posgrado" },
-    { tipo: "TXT", titulo: "Justificacion - Nivel Academico" },
-    { tipo: "TXT", titulo: "Puntaje Total Criterio 1" },
-
-    // ── CRITERIO 2: EXPERIENCIA ──
-    { tipo: "TXT", titulo: "2a. Experiencia Docente" },
-    { tipo: "TXT", titulo: "Justificacion - Experiencia Docente" },
-    { tipo: "TXT", titulo: "2b. Experiencia en Investigacion" },
-    { tipo: "TXT", titulo: "Justificacion - Investigacion" },
-    { tipo: "TXT", titulo: "2c. Experiencia en Extension" },
-    { tipo: "TXT", titulo: "Justificacion - Extension / Proyeccion" },
-    { tipo: "TXT", titulo: "2d. Experiencia Profesional Diferente" },
-    { tipo: "TXT", titulo: "Justificacion - Experiencia Profesional" },
-    { tipo: "TXT", titulo: "2e. Experiencia en Cargos Academico" },
-    { tipo: "TXT", titulo: "Justificacion - Cargos Academico Administrativos" },
-    { tipo: "TXT", titulo: "Puntaje Total Criterio 2" },
-
-    // ── CRITERIO 3: PRODUCTIVIDAD ACADEMICA ──
-    { tipo: "TXT", titulo: "3a. Articulos en Revistas Indexadas" },
-    { tipo: "TXT", titulo: "Detalle de articulos indexados" },
-    { tipo: "TXT", titulo: "3b. Libros, Obras, Software" },
-    { tipo: "TXT", titulo: "Detalle de libros / obras" },
-    { tipo: "TXT", titulo: "Puntaje Total Criterio 3" },
-    { tipo: "TXT", titulo: "Observaciones Generales del Evaluador" }
-  ];
-
-  var creadas = 0;
-  for (var i = 0; i < nuevasPreguntas.length; i++) {
-    var p = nuevasPreguntas[i];
-    if (titulosExistentes.indexOf(p.titulo.toLowerCase()) === -1) {
-      if (p.tipo === "MC") {
-        var mcItem = form.addMultipleChoiceItem();
-        mcItem.setTitle(p.titulo);
-        mcItem.setChoices(p.opciones.map(function(op) { return mcItem.createChoice(op); }));
-      } else if (p.tipo === "TXT") {
-        var txtItem = form.addParagraphTextItem();
-        txtItem.setTitle(p.titulo);
-      }
-      creadas++;
-      Logger.log("Creada pregunta en F3: " + p.titulo);
-    }
+  for (var i = items.length - 1; i >= 0; i--) {
+    form.deleteItem(items[i]);
   }
 
-  if (creadas > 0) {
-    // Si se crearon preguntas, reordenar el Formulario 3
-    reordenarFormulario3();
-    SpreadsheetApp.getUi().alert("Se crearon " + creadas + " preguntas (Criterio 1, 2 y 3) en el Formulario 3 con éxito.");
-  } else {
-    SpreadsheetApp.getUi().alert("Las preguntas ya existían en el Formulario 3.");
-  }
+  form.setTitle("ETAPA 3 - Hoja de Calificacion - Concurso Publico de Meritos 2026");
+  form.setDescription(
+    "Universidad del Quindio | Oficina de Asuntos Profesorales\n" +
+    "Hoja de Calificacion segun Articulo Decimo Cuarto del Acuerdo 029 de 2026.\n" +
+    "Total Hoja de Vida: 30 puntos.\n\n" +
+    "NOTA: Diligencie unicamente para candidatos que CUMPLIERON todos los requisitos en la Etapa 2."
+  );
+
+  // ── DATOS BASICOS ──────────────────────────────────────────────────
+  form.addTextItem().setTitle("Cedula del Candidato").setRequired(true);
+  form.addTextItem().setTitle("Nombre Completo del Candidato").setRequired(true);
+  form.addTextItem().setTitle("Programa / Area del Concurso").setRequired(true);
+  form.addTextItem().setTitle("Perfil del Cargo").setRequired(true);
+  form.addTextItem().setTitle("Nombre del Evaluador").setRequired(true);
+
+  // ── CRITERIO 1: NIVEL ACADEMICO ADICIONAL (max 5 pts) ─────────────
+  form.addPageBreakItem()
+    .setTitle("CRITERIO 1 — Maximo Nivel Academico Adicional al Requerido")
+    .setHelpText("Hasta 5 puntos. Solo se califica el titulo ADICIONAL al exigido por el perfil.");
+
+  var v1 = form.addMultipleChoiceItem();
+  v1.setTitle("Nivel Academico Acreditado");
+  v1.setHelpText("Seleccione el titulo adicional que presenta el candidato (diferente al requerido por el perfil).");
+  v1.setChoices([
+    v1.createChoice("Sin titulo adicional al requerido \u2192 0 puntos"),
+    v1.createChoice("Maestria adicional a la requerida \u2192 3 puntos"),
+    v1.createChoice("Especializacion Medico-Quirurgica adicional \u2192 3 puntos"),
+    v1.createChoice("Doctorado adicional al requerido \u2192 5 puntos")
+  ]);
+  v1.setRequired(true);
+
+  form.addParagraphTextItem()
+    .setTitle("Justificacion - Nivel Academico")
+    .setHelpText("Indique nombre del titulo adicional, institucion y anio de grado.")
+    .setRequired(true);
+
+  // ── CRITERIO 2: EXPERIENCIA (max 17 pts) ──────────────────────────
+  form.addPageBreakItem()
+    .setTitle("CRITERIO 2 — Experiencia (Hasta 17 puntos total)")
+    .setHelpText("Suma de: Docencia (5) + Extension (8) + Profesional (2) + Cargos Admin. (2)");
+
+  // 2a: Docencia universitaria
+  form.addSectionHeaderItem()
+    .setTitle("2a. Experiencia Docente Universitaria — Hasta 5 puntos");
+  var v2a = form.addMultipleChoiceItem();
+  v2a.setTitle("2a. Experiencia Docente");
+  v2a.setHelpText("Total de años certificados en docencia universitaria (contabilizados en TCE).");
+  v2a.setChoices([
+    v2a.createChoice("3 anios o menos (solo el minimo requerido) \u2192 0 puntos"),
+    v2a.createChoice("Superior a 3 y hasta 7 anios \u2192 1 punto"),
+    v2a.createChoice("Superior a 7 y hasta 11 anios \u2192 3 puntos"),
+    v2a.createChoice("Superior a 11 anios \u2192 5 puntos")
+  ]);
+  v2a.setRequired(true);
+  form.addParagraphTextItem()
+    .setTitle("Justificacion - Experiencia Docente")
+    .setHelpText("Indique instituciones, periodos y TCE calculado.").setRequired(true);
+
+  // 2b: Extension y Desarrollo Social
+  form.addSectionHeaderItem()
+    .setTitle("2b. Extension y Desarrollo Social — Hasta 8 puntos (proyectos ultimos 5 anios cerrados/liquidados)");
+
+  var v2bCoord = form.addMultipleChoiceItem();
+  v2bCoord.setTitle("2b. Participacion como Coordinador de proyectos de Extension");
+  v2bCoord.setChoices([
+    v2bCoord.createChoice("Sin participacion como coordinador \u2192 0 puntos"),
+    v2bCoord.createChoice("Entre 1 y 10 proyectos como coordinador \u2192 2 puntos"),
+    v2bCoord.createChoice("Desde 11 y mas proyectos como coordinador \u2192 4 puntos")
+  ]);
+  v2bCoord.setRequired(true);
+
+  var v2bFacil = form.addMultipleChoiceItem();
+  v2bFacil.setTitle("2b. Participacion como Facilitador (cursos formacion continua en IES)");
+  v2bFacil.setHelpText("Docente/tutor de cursos de formacion continua o aprendizaje permanente en IES.");
+  v2bFacil.setChoices([
+    v2bFacil.createChoice("Sin participacion como facilitador \u2192 0 puntos"),
+    v2bFacil.createChoice("Entre 200 y 400 horas como facilitador \u2192 1 punto"),
+    v2bFacil.createChoice("401 horas o mas como facilitador \u2192 2 puntos")
+  ]);
+  v2bFacil.setRequired(true);
+
+  var v2bLabor = form.addMultipleChoiceItem();
+  v2bLabor.setTitle("2b. Participacion por labor en proyectos de Extension");
+  v2bLabor.setChoices([
+    v2bLabor.createChoice("Sin participacion por labor \u2192 0 puntos"),
+    v2bLabor.createChoice("Entre 1 y 10 proyectos por labor \u2192 1 punto"),
+    v2bLabor.createChoice("Desde 11 y mas proyectos por labor \u2192 2 puntos")
+  ]);
+  v2bLabor.setRequired(true);
+
+  form.addParagraphTextItem()
+    .setTitle("Justificacion - Extension / Proyeccion")
+    .setHelpText("Liste proyectos, rol, entidad y anios.").setRequired(true);
+
+  // 2c: Experiencia profesional != docente
+  form.addSectionHeaderItem()
+    .setTitle("2c. Experiencia Profesional Diferente a Docente — Hasta 2 puntos");
+  var v2c = form.addMultipleChoiceItem();
+  v2c.setTitle("2c. Experiencia Profesional Diferente");
+  v2c.setHelpText("Años de experiencia profesional diferente a la docente (superior al minimo de 5 años).");
+  v2c.setChoices([
+    v2c.createChoice("5 anios o menos (solo el minimo requerido) \u2192 0 puntos"),
+    v2c.createChoice("Superior a 5 y hasta 10 anios \u2192 1 punto"),
+    v2c.createChoice("Superior a 10 anios \u2192 2 puntos")
+  ]);
+  v2c.setRequired(true);
+  form.addParagraphTextItem()
+    .setTitle("Justificacion - Experiencia Profesional")
+    .setHelpText("Indique empresa/entidad, cargo y periodo.").setRequired(true);
+
+  // 2d: Cargos academico-administrativos
+  form.addSectionHeaderItem()
+    .setTitle("2d. Experiencia en Cargos Academico-Administrativos en IES — Hasta 2 puntos");
+  var v2d = form.addMultipleChoiceItem();
+  v2d.setTitle("2d. Experiencia en Cargos Academico");
+  v2d.setHelpText("Cargos de direccion o administracion academica en Instituciones de Educacion Superior.");
+  v2d.setChoices([
+    v2d.createChoice("Sin experiencia en cargos academico-administrativos \u2192 0 puntos"),
+    v2d.createChoice("De 1 a 4 anios en cargos academico-administrativos \u2192 0.5 puntos"),
+    v2d.createChoice("Superior a 4 y hasta 8 anios \u2192 1 punto"),
+    v2d.createChoice("Superior a 8 anios \u2192 2 puntos")
+  ]);
+  v2d.setRequired(true);
+  form.addParagraphTextItem()
+    .setTitle("Justificacion - Cargos Academico Administrativos")
+    .setHelpText("Indique cargo, IES y periodo.").setRequired(true);
+
+  // ── CRITERIO 3: PRODUCTIVIDAD ACADEMICA (max 8 pts) ───────────────
+  form.addPageBreakItem()
+    .setTitle("CRITERIO 3 — Productividad Academica (Hasta 8 puntos)")
+    .setHelpText("Solo publicaciones de los ULTIMOS 5 ANIOS. Libros/software: maximo 3 autores.");
+
+  // Articulos A1
+  var v3a1 = form.addMultipleChoiceItem();
+  v3a1.setTitle("3a. Articulos en Revistas Indexadas - Categoria A1 Minciencias");
+  v3a1.setChoices([
+    v3a1.createChoice("No presenta articulos A1 \u2192 0 puntos"),
+    v3a1.createChoice("1 a 2 articulos A1 \u2192 0.5 puntos"),
+    v3a1.createChoice("3 articulos A1 \u2192 1 punto"),
+    v3a1.createChoice("4 articulos A1 \u2192 1.5 puntos"),
+    v3a1.createChoice("5 o mas articulos A1 \u2192 2 puntos")
+  ]);
+  v3a1.setRequired(true);
+
+  // Articulos A2
+  var v3a2 = form.addMultipleChoiceItem();
+  v3a2.setTitle("3b. Articulos en Revistas Indexadas - Categoria A2 Minciencias");
+  v3a2.setChoices([
+    v3a2.createChoice("No presenta articulos A2 \u2192 0 puntos"),
+    v3a2.createChoice("1 a 2 articulos A2 \u2192 0.5 puntos"),
+    v3a2.createChoice("3 articulos A2 \u2192 1 punto"),
+    v3a2.createChoice("4 articulos A2 \u2192 1.5 puntos"),
+    v3a2.createChoice("5 o mas articulos A2 \u2192 2 puntos")
+  ]);
+  v3a2.setRequired(true);
+
+  form.addParagraphTextItem()
+    .setTitle("Detalle de articulos indexados")
+    .setHelpText("Titulo, revista, anio, categoria (A1/A2).");
+
+  // Libros
+  var v3lib = form.addMultipleChoiceItem();
+  v3lib.setTitle("3c. Libros (maximo 3 autores, ultimos 5 anios)");
+  v3lib.setChoices([
+    v3lib.createChoice("No presenta libros \u2192 0 puntos"),
+    v3lib.createChoice("1 libro \u2192 0.5 puntos"),
+    v3lib.createChoice("2 o mas libros \u2192 1 punto")
+  ]);
+  v3lib.setRequired(true);
+
+  // Obras artisticas
+  var v3obr = form.addMultipleChoiceItem();
+  v3obr.setTitle("3d. Obras Artisticas (ultimos 5 anios)");
+  v3obr.setChoices([
+    v3obr.createChoice("No presenta obras artisticas \u2192 0 puntos"),
+    v3obr.createChoice("1 obra \u2192 0.5 puntos"),
+    v3obr.createChoice("2 o mas obras \u2192 1 punto")
+  ]);
+  v3obr.setRequired(true);
+
+  // Software
+  var v3sof = form.addMultipleChoiceItem();
+  v3sof.setTitle("3e. Software (maximo 3 autores, ultimos 5 anios)");
+  v3sof.setChoices([
+    v3sof.createChoice("No presenta software \u2192 0 puntos"),
+    v3sof.createChoice("1 software \u2192 0.5 puntos"),
+    v3sof.createChoice("2 o mas software \u2192 1 punto")
+  ]);
+  v3sof.setRequired(true);
+
+  // Produccion audiovisual
+  var v3aud = form.addMultipleChoiceItem();
+  v3aud.setTitle("3f. Produccion Audiovisual y Comunicativa (ultimos 5 anios)");
+  v3aud.setChoices([
+    v3aud.createChoice("No presenta produccion audiovisual \u2192 0 puntos"),
+    v3aud.createChoice("1 produccion audiovisual \u2192 0.5 puntos"),
+    v3aud.createChoice("2 o mas producciones audiovisuales \u2192 1 punto")
+  ]);
+  v3aud.setRequired(true);
+
+  form.addParagraphTextItem()
+    .setTitle("Detalle de libros / obras")
+    .setHelpText("Titulo, editorial/plataforma, anio, tipo, numero de autores.");
+
+  // ── OBSERVACIONES ─────────────────────────────────────────────────
+  form.addPageBreakItem()
+    .setTitle("Observaciones del Evaluador");
+  form.addParagraphTextItem()
+    .setTitle("Observaciones Generales del Evaluador")
+    .setHelpText("Comentarios adicionales, salvedades o aclaraciones sobre la evaluacion.");
+
+  var total = form.getItems().length;
+  Logger.log("Formulario 3 reconstruido con " + total + " preguntas — Acuerdo 029 de 2026.");
+  SpreadsheetApp.getUi().alert(
+    "Formulario 3 reconstruido exitosamente con " + total + " preguntas\n" +
+    "segun el Articulo 14 del Acuerdo 029 de 2026.\n\n" +
+    "Los puntajes se calculan AUTOMATICAMENTE al enviar."
+  );
 }
 
 // =====================================================================
