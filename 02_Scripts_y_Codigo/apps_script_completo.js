@@ -219,6 +219,7 @@ function onFormSubmit_F2(e) {
     // ── 1. COPIAR PLANTILLA (logos y formato intactos) ───────────────
     var copia   = DriveApp.getFileById(TPL_FORM2_ID)
                     .makeCopy("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
+    compartirArchivo(copia.getId()); // ← Compartir con cualquiera que tenga el enlace
     var copyDoc = DocumentApp.openById(copia.getId());
     var body    = copyDoc.getBody();
 
@@ -395,6 +396,18 @@ function extraerPuntaje(textoOpcion) {
 }
 
 // =====================================================================
+// COMPARTIR ARCHIVO: Permite que cualquiera con el enlace pueda ver
+// =====================================================================
+function compartirArchivo(fileId) {
+  try {
+    DriveApp.getFileById(fileId)
+      .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch(e) {
+    Logger.log("Error al compartir archivo " + fileId + ": " + e);
+  }
+}
+
+// =====================================================================
 // FORMULARIO 3: HOJA DE CALIFICACION - Acuerdo 029 de 2026
 // Genera el documento DESDE CERO sin plantilla.
 // =====================================================================
@@ -459,6 +472,7 @@ function onFormSubmit_F3(e) {
 
     // ── CREAR SPREADSHEET ─────────────────────────────────────────────
     var ss = SpreadsheetApp.create("ETAPA3_" + cedula + "_" + nombre.substring(0, 25));
+    compartirArchivo(ss.getId()); // ← Compartir con cualquiera que tenga el enlace
     var ws = ss.getActiveSheet();
     ws.setName("Calificacion HV");
     ws.setColumnWidth(1, 30);
@@ -699,6 +713,7 @@ function onFormSubmit_F4(e) {
     d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
 
     var doc  = DocumentApp.create("ETAPA4_" + cedula + "_" + nombre.substring(0, 30));
+    compartirArchivo(doc.getId()); // ← Compartir con cualquiera que tenga el enlace
     var body = doc.getBody();
 
 
@@ -784,9 +799,304 @@ function instalarTodosLosTriggers() {
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Acciones Concurso")
-    .addItem("Generar / Actualizar TODOS los enlaces", "generarTodosLosEnlaces")
+    .addItem("Generar / Actualizar TODOS los enlaces",       "generarTodosLosEnlaces")
+    .addSeparator()
+    .addItem("🎨 Colorear todo segun facultad (Semaforo)",   "colorearTodoSemaforoPorFacultad")
+    .addItem("🧹 Limpiar columnas duplicadas",               "limpiarColumnasBasura")
+    .addItem("📊 Actualizar Hoja Resumen de Candidatos",     "actualizarHojaResumen")
     .addToUi();
 }
+
+// =====================================================================
+// SEMAFORO RETROACTIVO: Colorea todas las filas existentes
+// =====================================================================
+function colorearTodoSemaforoPorFacultad() {
+  var hojas = [
+    { nombre: "Respuestas de formulario 1", colProg: "programa" },
+    { nombre: "Respuestas de formulario 2", colProg: "programa" },
+    { nombre: "Respuestas de formulario 3", colProg: "programa" },
+    { nombre: "Respuestas de formulario 4", colProg: "programa academico" }
+  ];
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var total = 0;
+
+  hojas.forEach(function(h) {
+    var sheet = ss.getSheetByName(h.nombre);
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return;
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var colProg = -1;
+    for (var i = 0; i < headers.length; i++) {
+      if (String(headers[i]).toLowerCase().indexOf(h.colProg) >= 0) { colProg = i; break; }
+    }
+    if (colProg === -1) return;
+
+    // Buscar o crear columna "Color Estante"
+    var colEstante = -1;
+    for (var j = 0; j < headers.length; j++) {
+      if (String(headers[j]).toLowerCase() === "color estante") { colEstante = j + 1; break; }
+    }
+    if (colEstante === -1) {
+      colEstante = lastCol + 1;
+      sheet.getRange(1, colEstante).setValue("Color Estante");
+    }
+
+    var datos = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    for (var r = 0; r < datos.length; r++) {
+      var prog = String(datos[r][colProg] || "");
+      if (!prog.trim()) continue;
+      var sem = obtenerSemaforoPrograma(prog);
+      colorearFila(sheet, r + 2, sem.sheetBg);
+      sheet.getRange(r + 2, colEstante).setValue(sem.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
+      total++;
+    }
+  });
+
+  SpreadsheetApp.getUi().alert("✅ Semáforo aplicado a " + total + " filas en todas las hojas.");
+}
+
+// =====================================================================
+// LIMPIEZA: Elimina columnas cuyo encabezado sea una URL o duplicadas
+// =====================================================================
+function limpiarColumnasBasura() {
+  var nombres = [
+    "Respuestas de formulario 1",
+    "Respuestas de formulario 2",
+    "Respuestas de formulario 3",
+    "Respuestas de formulario 4"
+  ];
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var totalEliminadas = 0;
+
+  nombres.forEach(function(nombre) {
+    var sheet = ss.getSheetByName(nombre);
+    if (!sheet) return;
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    // Encontrar columnas a eliminar (de derecha a izquierda para no desplazar índices)
+    var colsAEliminar = [];
+    var vistoEnlace = false;
+    var vistoColor  = false;
+
+    for (var i = headers.length - 1; i >= 0; i--) {
+      var h = String(headers[i]).trim();
+      // Columna basura: encabezado es una URL
+      if (h.indexOf("https://") === 0 || h.indexOf("http://") === 0) {
+        colsAEliminar.push(i + 1);
+        continue;
+      }
+      // Columna "Enlace Documento" duplicada: mantener solo la primera encontrada (más a la derecha)
+      if (h.toLowerCase() === "enlace documento") {
+        if (vistoEnlace) { colsAEliminar.push(i + 1); } else { vistoEnlace = true; }
+        continue;
+      }
+      // Columna "Color Estante" duplicada
+      if (h.toLowerCase() === "color estante") {
+        if (vistoColor) { colsAEliminar.push(i + 1); } else { vistoColor = true; }
+        continue;
+      }
+      // Columna cuyo encabezado es solo un color (GRIS, VERDE, AZUL...)
+      if (["gris","verde","azul","rojo","naranja","morado","amarillo"].indexOf(h.toLowerCase()) >= 0) {
+        colsAEliminar.push(i + 1);
+      }
+    }
+
+    // Eliminar de derecha a izquierda
+    colsAEliminar.sort(function(a,b){ return b - a; });
+    colsAEliminar.forEach(function(col) {
+      sheet.deleteColumn(col);
+      totalEliminadas++;
+    });
+  });
+
+  SpreadsheetApp.getUi().alert("🧹 Limpieza completada. Se eliminaron " + totalEliminadas + " columnas duplicadas o basura.");
+}
+
+// =====================================================================
+// HOJA RESUMEN: Consolida el estado de cada candidato por cedula
+// =====================================================================
+function actualizarHojaResumen() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+
+  // Obtener o crear la hoja de resumen
+  var resumen = ss.getSheetByName("RESUMEN CANDIDATOS");
+  if (!resumen) {
+    resumen = ss.insertSheet("RESUMEN CANDIDATOS");
+    // Mover al inicio
+    ss.setActiveSheet(resumen);
+    ss.moveActiveSheet(1);
+  }
+  resumen.clearContents();
+  resumen.clearFormats();
+
+  // ── Encabezado ────────────────────────────────────────────────────
+  var HDARK = "#1a1a2e"; var HMED = "#16213e"; var TW = "#ffffff";
+  var encabezados = [
+    "Cedula", "Nombre Completo", "Programa / Area", "Facultad", "Color Estante",
+    "F1 Registro", "F2 Estado", "F2 Doc. Lista Chequeo",
+    "F3 Puntaje HV", "F3 Doc. Calificacion",
+    "F4 Ficha Ingreso"
+  ];
+  resumen.setFrozenRows(2);
+  resumen.setColumnWidth(1, 110);
+  resumen.setColumnWidth(2, 200);
+  resumen.setColumnWidth(3, 200);
+  resumen.setColumnWidth(4, 220);
+  resumen.setColumnWidth(5, 100);
+  resumen.setColumnWidth(6, 120);
+  resumen.setColumnWidth(7, 140);
+  resumen.setColumnWidth(8, 160);
+  resumen.setColumnWidth(9, 110);
+  resumen.setColumnWidth(10, 160);
+  resumen.setColumnWidth(11, 140);
+
+  // Fila 1: título
+  var tituloRange = resumen.getRange(1, 1, 1, encabezados.length);
+  tituloRange.merge()
+    .setValue("CONCURSO PÚBLICO DE MÉRITOS — UNIVERSIDAD DEL QUINDÍO — RESUMEN DE CANDIDATOS")
+    .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(11)
+    .setHorizontalAlignment("center");
+  resumen.setRowHeight(1, 30);
+
+  // Fila 2: encabezados de columna
+  var hdrRange = resumen.getRange(2, 1, 1, encabezados.length);
+  hdrRange.setValues([encabezados])
+    .setBackground(HMED).setFontColor(TW).setFontWeight("bold").setFontSize(9)
+    .setHorizontalAlignment("center").setWrap(true);
+  resumen.setRowHeight(2, 28);
+
+  // ── Leer datos de cada hoja ───────────────────────────────────────
+  function leerHoja(nombre) {
+    var sh = ss.getSheetByName(nombre);
+    if (!sh || sh.getLastRow() < 2) return [];
+    var last = sh.getLastRow();
+    var cols = sh.getLastColumn();
+    var enc  = sh.getRange(1, 1, 1, cols).getValues()[0];
+    var data = sh.getRange(2, 1, last - 1, cols).getValues();
+    return data.map(function(row) {
+      var obj = {};
+      enc.forEach(function(h, i) { obj[String(h).toLowerCase().trim()] = row[i]; });
+      return obj;
+    });
+  }
+
+  var f1 = leerHoja("Respuestas de formulario 1");
+  var f2 = leerHoja("Respuestas de formulario 2");
+  var f3 = leerHoja("Respuestas de formulario 3");
+  var f4 = leerHoja("Respuestas de formulario 4");
+
+  // Índice por cedula
+  function indexarPorCedula(filas, campoCedula) {
+    var idx = {};
+    filas.forEach(function(f) {
+      var ced = String(f[campoCedula] || "").trim();
+      if (ced) idx[ced] = f; // mantiene el último si hay duplicados
+    });
+    return idx;
+  }
+
+  var idxF1 = indexarPorCedula(f1, "cedula del candidato");
+  var idxF2 = indexarPorCedula(f2, "cedula del candidato");
+  var idxF3 = indexarPorCedula(f3, "cedula del candidato");
+  var idxF4 = indexarPorCedula(f4, "cedula de ciudadania");
+
+  // Unión de todas las cédulas conocidas
+  var cedulas = {};
+  [idxF1, idxF2, idxF3, idxF4].forEach(function(idx) {
+    Object.keys(idx).forEach(function(c) { cedulas[c] = true; });
+  });
+
+  // ── Escribir filas de datos ───────────────────────────────────────
+  var filas = [];
+  Object.keys(cedulas).sort().forEach(function(ced) {
+    var r1 = idxF1[ced] || {};
+    var r2 = idxF2[ced] || {};
+    var r3 = idxF3[ced] || {};
+    var r4 = idxF4[ced] || {};
+
+    var nombre  = r1["nombre completo del candidato"] || r2["nombre completo del candidato"] || r3["nombre completo del candidato"] || r4["nombre completo"] || "";
+    var prog    = r1["programa / area del concurso"]  || r2["programa / area del concurso"]  || r3["programa / area del concurso"]  || r4["programa academico"] || "";
+    var sem     = obtenerSemaforoPrograma(prog);
+
+    var f1Estado = Object.keys(r1).length > 0 ? "✅ Registrado" : "—";
+    var f2Estado = Object.keys(r2).length > 0
+      ? (String(r2["concepto final"] || "").toUpperCase().indexOf("CUMPLE") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
+      : "—";
+
+    // Enlace F2
+    var enlaceF2 = "";
+    for (var k in r2) { if (k.indexOf("enlace") >= 0) { enlaceF2 = r2[k] || ""; break; } }
+
+    // Puntaje F3 (extraer del enlace o del campo de observaciones)
+    var enlaceF3 = "";
+    for (var k in r3) { if (k.indexOf("enlace") >= 0) { enlaceF3 = r3[k] || ""; break; } }
+    var puntajeF3 = Object.keys(r3).length > 0 ? "Ver doc." : "—";
+
+    // Recalcular puntaje desde respuestas F3 si existen
+    if (Object.keys(r3).length > 0) {
+      try {
+        var p1   = extraerPuntaje(r3["nivel academico acreditado"] || "");
+        var p2a  = extraerPuntaje(r3["2a. experiencia docente"] || "");
+        var p2bC = extraerPuntaje(r3["2b. participacion como coordinador de proyectos de extension"] || "");
+        var p2bF = extraerPuntaje(r3["2b. participacion como facilitador (cursos formacion continua en ies)"] || "");
+        var p2bL = extraerPuntaje(r3["2b. participacion por labor en proyectos de extension"] || "");
+        var p2b  = Math.min(8, p2bC + p2bF + p2bL);
+        var p2c  = extraerPuntaje(r3["2c. experiencia profesional diferente"] || "");
+        var p2d  = extraerPuntaje(r3["2d. experiencia en cargos academico"] || "");
+        var p2   = Math.min(17, p2a + p2b + p2c + p2d);
+        var p3a1 = extraerPuntaje(r3["3a. articulos en revistas indexadas - categoria a1 minciencias"] || "");
+        var p3a2 = extraerPuntaje(r3["3b. articulos en revistas indexadas - categoria a2 minciencias"] || "");
+        var p3l  = extraerPuntaje(r3["3c. libros (maximo 3 autores, ultimos 5 anios)"] || "");
+        var p3o  = extraerPuntaje(r3["3d. obras artisticas (ultimos 5 anios)"] || "");
+        var p3s  = extraerPuntaje(r3["3e. software (maximo 3 autores, ultimos 5 anios)"] || "");
+        var p3av = extraerPuntaje(r3["3f. produccion audiovisual y comunicativa (ultimos 5 anios)"] || "");
+        var p3   = Math.min(8, p3a1 + p3a2 + p3l + p3o + p3s + p3av);
+        var tot  = Math.min(30, p1 + p2 + p3);
+        puntajeF3 = tot + " / 30";
+      } catch(ex) { puntajeF3 = "Ver doc."; }
+    }
+
+    // Enlace F4
+    var enlaceF4 = "";
+    for (var k in r4) { if (k.indexOf("enlace") >= 0) { enlaceF4 = r4[k] || ""; break; } }
+    var f4Estado = Object.keys(r4).length > 0 ? (enlaceF4 ? "✅ " + enlaceF4 : "✅ Ingresado") : "—";
+
+    filas.push([
+      ced, nombre, prog, sem.facultad, sem.colorFisico,
+      f1Estado, f2Estado, enlaceF2 || "—",
+      puntajeF3, enlaceF3 || "—",
+      f4Estado
+    ]);
+  });
+
+  if (filas.length === 0) {
+    resumen.getRange(3, 1).setValue("(Sin datos aún en ninguno de los formularios)");
+    SpreadsheetApp.getUi().alert("📊 Hoja Resumen actualizada. No hay candidatos registrados aún.");
+    return;
+  }
+
+  var dataRange = resumen.getRange(3, 1, filas.length, encabezados.length);
+  dataRange.setValues(filas).setFontSize(9).setWrap(false).setVerticalAlignment("middle");
+
+  // Colorear filas según facultad
+  for (var r = 0; r < filas.length; r++) {
+    var progFila = filas[r][2];
+    var semFila  = obtenerSemaforoPrograma(progFila);
+    resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(semFila.sheetBg);
+    resumen.getRange(r + 3, 5).setFontWeight("bold").setHorizontalAlignment("center");
+  }
+
+  // Bordes
+  resumen.getRange(2, 1, filas.length + 1, encabezados.length)
+    .setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
+
+  SpreadsheetApp.getUi().alert("📊 Hoja Resumen actualizada con " + filas.length + " candidato(s).");
+}
+
 
 // Trigger: genera enlaces solo cuando el envio viene del Formulario 1
 function onFormSubmit_F1(e) {
