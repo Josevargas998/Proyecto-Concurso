@@ -294,152 +294,267 @@ function extraerPuntaje(textoOpcion) {
 
 // =====================================================================
 // FORMULARIO 3: HOJA DE CALIFICACION - Acuerdo 029 de 2026
+// Genera el documento DESDE CERO sin plantilla.
 // =====================================================================
 function onFormSubmit_F3(e) {
   try {
-    var d = getFilaDatos("Respuestas de formulario 3");
-    var cedula   = d.safe("Cedula del Candidato");
-    var nombre   = d.safe("Nombre Completo del Candidato");
-    var prog     = d.safe("Programa / Area del Concurso");
-    var perfil   = d.safe("Perfil del Cargo");
+    var d         = getFilaDatos("Respuestas de formulario 3");
+    var cedula    = d.safe("Cedula del Candidato");
+    var nombre    = d.safe("Nombre Completo del Candidato");
+    var prog      = d.safe("Programa / Area del Concurso");
+    var perfil    = d.safe("Perfil del Cargo");
     var evaluador = d.safe("Nombre del Evaluador");
 
     var colEnlace = d.getColIndex("Enlace Documento");
     if (colEnlace === -1) { colEnlace = d.enc.length + 1; d.hoja.getRange(1, colEnlace).setValue("Enlace Documento"); }
 
-    // ── LEER CAMPOS Y CALCULAR PUNTAJES ──────────────────────────────
-    // Criterio 1: Nivel academico adicional (max 5 pts)
-    var v1  = d.safe("Nivel Academico Acreditado");
-    var p1  = extraerPuntaje(v1);
-
-    // Criterio 2a: Experiencia docente (max 5 pts)
-    var v2a = d.safe("2a. Experiencia Docente");
-    var p2a = extraerPuntaje(v2a);
-
-    // Criterio 2b: Extension - coordinador + facilitador + labor (max 8 pts)
+    // ── CALCULAR PUNTAJES ─────────────────────────────────────────────
+    var v1       = d.safe("Nivel Academico Acreditado");
+    var p1       = extraerPuntaje(v1);
+    var v2a      = d.safe("2a. Experiencia Docente");
+    var p2a      = extraerPuntaje(v2a);
     var v2bCoord = d.safe("2b. Participacion como Coordinador");
     var v2bFacil = d.safe("2b. Participacion como Facilitador");
     var v2bLabor = d.safe("2b. Participacion por labor");
-    var p2b = Math.min(8, extraerPuntaje(v2bCoord) + extraerPuntaje(v2bFacil) + extraerPuntaje(v2bLabor));
-
-    // Criterio 2c: Experiencia profesional diferente (max 2 pts)
-    var v2c = d.safe("2c. Experiencia Profesional Diferente");
-    var p2c = extraerPuntaje(v2c);
-
-    // Criterio 2d: Cargos academico-administrativos (max 2 pts)
-    var v2d = d.safe("2d. Experiencia en Cargos Academico");
-    var p2d = extraerPuntaje(v2d);
-
+    var p2bC = extraerPuntaje(v2bCoord);
+    var p2bF = extraerPuntaje(v2bFacil);
+    var p2bL = extraerPuntaje(v2bLabor);
+    var p2b  = Math.min(8, p2bC + p2bF + p2bL);
+    var v2c  = d.safe("2c. Experiencia Profesional Diferente");
+    var p2c  = extraerPuntaje(v2c);
+    var v2d  = d.safe("2d. Experiencia en Cargos Academico");
+    var p2d  = extraerPuntaje(v2d);
     var p2Total = Math.min(17, p2a + p2b + p2c + p2d);
-
-    // Criterio 3: Productividad academica (max 8 pts)
     var v3a1 = d.safe("3a. Articulos en Revistas Indexadas - Categoria A1");
     var v3a2 = d.safe("3b. Articulos en Revistas Indexadas - Categoria A2");
     var v3lib = d.safe("3c. Libros");
     var v3obr = d.safe("3d. Obras Artisticas");
     var v3sof = d.safe("3e. Software");
     var v3aud = d.safe("3f. Produccion Audiovisual");
-    var p3Total = Math.min(8,
-      extraerPuntaje(v3a1) + extraerPuntaje(v3a2) +
-      extraerPuntaje(v3lib) + extraerPuntaje(v3obr) +
-      extraerPuntaje(v3sof) + extraerPuntaje(v3aud)
-    );
+    var p3Total = Math.min(8, extraerPuntaje(v3a1) + extraerPuntaje(v3a2) + extraerPuntaje(v3lib) + extraerPuntaje(v3obr) + extraerPuntaje(v3sof) + extraerPuntaje(v3aud));
+    var pTotal  = Math.min(30, p1 + p2Total + p3Total);
+    var obsGen  = d.safe("Observaciones Generales del Evaluador");
+    var detArt  = d.safe("Detalle de articulos indexados");
+    var detLib  = d.safe("Detalle de libros / obras");
+    var just1   = d.safe("Justificacion - Nivel Academico");
+    var just2a  = d.safe("Justificacion - Experiencia Docente");
+    var just2b  = d.safe("Justificacion - Extension / Proyeccion");
+    var just2c  = d.safe("Justificacion - Experiencia Profesional");
+    var just2d  = d.safe("Justificacion - Cargos Academico Administrativos");
 
-    var pHojaVida = Math.min(30, p1 + p2Total + p3Total);
-    var obsGen = d.safe("Observaciones Generales del Evaluador");
+    // Facultad
+    var fac = "";
+    var pn = (prog || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (var kf in GLOBAL_PROG_FACULTAD) { if (pn.indexOf(kf) >= 0) { fac = GLOBAL_PROG_FACULTAD[kf]; break; } }
+    if (!fac) fac = prog;
 
-    // ── GENERAR COPIA DEL TEMPLATE EXCEL ─────────────────────────────
-    var file   = DriveApp.getFileById(TPL_FORM3_ID).makeCopy("ETAPA3_" + cedula + "_" + nombre.substring(0, 30));
-    var ssCopy = SpreadsheetApp.openById(file.getId());
-    var ws     = ssCopy.getSheets()[0];
+    // ── CREAR SPREADSHEET ─────────────────────────────────────────────
+    var ss = SpreadsheetApp.create("ETAPA3_" + cedula + "_" + nombre.substring(0, 25));
+    var ws = ss.getActiveSheet();
+    ws.setName("Calificacion HV");
+    ws.setColumnWidth(1, 30);
+    ws.setColumnWidth(2, 340);
+    ws.setColumnWidth(3, 175);
+    ws.setColumnWidth(4, 125);
 
-    var fac3 = "";
-    var progNorm = (prog || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    for (var key3 in GLOBAL_PROG_FACULTAD) {
-      if (progNorm.indexOf(key3) >= 0) { fac3 = GLOBAL_PROG_FACULTAD[key3]; break; }
+    var CD = "#1e3a2f"; var CM = "#2d6a4f"; var CL = "#52796f";
+    var CS = "#b7e1cd"; var CSel = "#d8f3dc"; var CTot = "#f6bd60";
+    var CW = "#ffffff"; var CGr = "#f1f3f4"; var CN = "#e8f5e9";
+    var TW = "#ffffff"; var TD = "#1a1a1a";
+    var row = 1;
+
+    function sc(r, c, val, bg, fg, bold, sz, hal) {
+      var cell = ws.getRange(r, c);
+      if (val !== null && val !== undefined) cell.setValue(val);
+      if (bg) cell.setBackground(bg);
+      if (fg) cell.setFontColor(fg);
+      if (bold !== undefined) cell.setFontWeight(bold ? "bold" : "normal");
+      if (sz) cell.setFontSize(sz);
+      if (hal) cell.setHorizontalAlignment(hal);
+      cell.setWrap(true);
     }
-    if (!fac3) fac3 = prog;
-
-    ws.getRange("A5").setValue("Candidato: " + nombre + "   CC: " + cedula);
-    ws.getRange("A6").setValue("Facultad: " + fac3);
-    ws.getRange("A7").setValue("Programa: " + prog);
-    ws.getRange("A8").setValue("Perfil: " + perfil + "   Evaluador: " + evaluador);
-
-    // Puntajes en el template
-    ws.getRange("D70").setValue(p1);
-    ws.getRange("D71").setValue(p2Total);
-    ws.getRange("D72").setValue(p3Total);
-    ws.getRange("D73").setValue(pHojaVida);
-
-
-    // ── HOJA DETALLE ─────────────────────────────────────────────────
-    var det = ssCopy.insertSheet("Detalle Evaluacion - Acuerdo 029");
-    det.getRange("A1").setValue("HOJA DE CALIFICACION — ACUERDO 029 DE 2026").setFontWeight("bold").setFontSize(12);
-    det.getRange("A2").setValue("Candidato: " + nombre + "   CC: " + cedula);
-    det.getRange("A3").setValue("Evaluador: " + evaluador);
-    det.getRange("A4").setValue("Programa: " + prog + " — " + perfil);
-    det.getRange("A5").setValue("");
-
-    var data029 = [
-      ["=== CRITERIO 1: NIVEL ACADEMICO ADICIONAL (max 5 pts) ===", ""],
-      ["Nivel adicional acreditado:", v1],
-      ["Justificacion:",            d.safe("Justificacion - Nivel Academico")],
-      ["PUNTAJE CRITERIO 1:",       p1],
-      ["", ""],
-      ["=== CRITERIO 2: EXPERIENCIA (max 17 pts) ===", ""],
-      ["2a. Experiencia docente:",          v2a + " [" + p2a + " pts]"],
-      ["    Justificacion 2a:",             d.safe("Justificacion - Experiencia Docente")],
-      ["2b. Coordinador proyectos ext.:",   v2bCoord],
-      ["2b. Facilitador cursos IES:",       v2bFacil],
-      ["2b. Participacion por labor:",      v2bLabor],
-      ["    Justificacion 2b:",             d.safe("Justificacion - Extension / Proyeccion")],
-      ["    Puntaje 2b subtotal:",          p2b + " pts (max 8)"],
-      ["2c. Exp. profesional != docencia:", v2c + " [" + p2c + " pts]"],
-      ["    Justificacion 2c:",             d.safe("Justificacion - Experiencia Profesional")],
-      ["2d. Cargos acad.-admin. en IES:",   v2d + " [" + p2d + " pts]"],
-      ["    Justificacion 2d:",             d.safe("Justificacion - Cargos Academico Administrativos")],
-      ["PUNTAJE CRITERIO 2:",              p2Total + " (max 17)"],
-      ["", ""],
-      ["=== CRITERIO 3: PRODUCTIVIDAD ACADEMICA (max 8 pts) ===", ""],
-      ["Articulos A1 Minciencias:",     v3a1],
-      ["Articulos A2 Minciencias:",     v3a2],
-      ["Detalle articulos:",            d.safe("Detalle de articulos indexados")],
-      ["Libros:",                       v3lib],
-      ["Obras artisticas:",             v3obr],
-      ["Software:",                     v3sof],
-      ["Produccion audiovisual:",       v3aud],
-      ["Detalle libros/obras:",         d.safe("Detalle de libros / obras")],
-      ["PUNTAJE CRITERIO 3:",           p3Total + " (max 8)"],
-      ["", ""],
-      ["=== TOTAL HOJA DE VIDA ===", ""],
-      ["Criterio 1 (max 5):",   p1],
-      ["Criterio 2 (max 17):",  p2Total],
-      ["Criterio 3 (max 8):",   p3Total],
-      ["TOTAL HOJA DE VIDA:",   pHojaVida + " / 30"],
-      ["", ""],
-      ["Observaciones del Evaluador:", obsGen]
-    ];
-
-    for (var i = 0; i < data029.length; i++) {
-      det.getRange(i + 6, 1).setValue(data029[i][0]);
-      det.getRange(i + 6, 2).setValue(data029[i][1]);
-      if (String(data029[i][0]).indexOf("===" ) >= 0) {
-        det.getRange(i + 6, 1).setFontWeight("bold").setBackground("#cfe2f3");
-        det.getRange(i + 6, 2).setBackground("#cfe2f3");
-      }
-      if (String(data029[i][0]).indexOf("PUNTAJE") >= 0 || String(data029[i][0]).indexOf("TOTAL") >= 0) {
-        det.getRange(i + 6, 1).setFontWeight("bold");
-        det.getRange(i + 6, 2).setFontWeight("bold").setBackground("#d9ead3");
-      }
+    function mc(r, c1, c2, val, bg, fg, bold, sz, hal) {
+      var rng = ws.getRange(r, c1, 1, c2 - c1 + 1);
+      rng.merge().setValue(val || "").setWrap(true);
+      if (bg) rng.setBackground(bg);
+      if (fg) rng.setFontColor(fg);
+      if (bold !== undefined) rng.setFontWeight(bold ? "bold" : "normal");
+      if (sz) rng.setFontSize(sz);
+      if (hal) rng.setHorizontalAlignment(hal);
     }
-    det.setColumnWidth(1, 280);
-    det.setColumnWidth(2, 400);
-    det.autoResizeRows(1, data029.length + 6);
+    function optRow(r, txt, scale, score, selected) {
+      var bg = selected ? CSel : CW;
+      var bld = selected ? true : false;
+      mc(r, 1, 2, (selected ? "✔   " : "        ") + txt, bg, TD, bld, 9, "left");
+      sc(r, 3, scale, bg, TD, false, 9, "center");
+      sc(r, 4, selected ? score : "", bg, TD, bld, 10, "center");
+      ws.setRowHeight(r, 20);
+    }
+    function sel(resp, key) { return (resp || "").toLowerCase().indexOf((key || "").toLowerCase()) >= 0; }
+    function notaRow(r, txt) { mc(r, 1, 4, txt, CN, TD, false, 9, "left"); ws.setRowHeight(r, 18); }
+    function justRow(r, txt, pts) {
+      mc(r, 1, 3, "Justificacion: " + (txt || "(No especificada)"), CN, TD, false, 9, "left");
+      sc(r, 4, pts, CS, TD, true, 10, "center");
+      ws.setRowHeight(r, 18);
+    }
+    function subtotalRow(r, label, pts) {
+      ws.setRowHeight(r, 24);
+      mc(r, 1, 3, label, CS, TD, true, 10, "right");
+      sc(r, 4, pts, CTot, TD, true, 12, "center");
+    }
+    function secRow(r, num, label, maxPts) {
+      ws.setRowHeight(r, 26);
+      sc(r, 1, num, CD, TW, true, 11, "center");
+      mc(r, 2, 3, label, CD, TW, true, 11, "left");
+      sc(r, 4, maxPts, CD, TW, true, 9, "center");
+    }
+    function subSecRow(r, ltr, label, maxPts) {
+      ws.setRowHeight(r, 22);
+      sc(r, 1, ltr, CL, TW, true, 10, "center");
+      mc(r, 2, 3, label, CL, TW, true, 10, "left");
+      sc(r, 4, maxPts, CL, TW, true, 9, "center");
+    }
 
-    d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ssCopy.getId() + "/edit");
-    Logger.log("F3 OK — " + nombre + " — Total HV: " + pHojaVida + "/30");
+    // Encabezado
+    ws.setRowHeight(row, 28); mc(row,1,4,"UNIVERSIDAD DEL QUINDIO — OFICINA DE ASUNTOS PROFESORALES",CD,TW,true,13,"center"); row++;
+    ws.setRowHeight(row, 22); mc(row,1,4,"CONCURSO PUBLICO DE MERITOS — ACUERDO 029 DE 2026",CD,TW,true,10,"center"); row++;
+    ws.setRowHeight(row, 26); mc(row,1,4,"HOJA DE CALIFICACION — ETAPA 3: HOJA DE VIDA",CM,TW,true,12,"center"); row++;
+    ws.setRowHeight(row, 8);  mc(row,1,4,"",CGr); row++;
+    ws.setRowHeight(row, 22); mc(row,1,4,"Candidato:  " + nombre + "     CC:  " + cedula, CGr,TD,true,10,"left"); row++;
+    ws.setRowHeight(row, 20); mc(row,1,4,"Facultad:   " + fac, CGr,TD,false,10,"left"); row++;
+    ws.setRowHeight(row, 20); mc(row,1,4,"Programa:   " + prog, CGr,TD,false,10,"left"); row++;
+    ws.setRowHeight(row, 20); mc(row,1,4,"Perfil:  " + perfil + "       Evaluador:  " + evaluador, CGr,TD,false,10,"left"); row++;
+    ws.setRowHeight(row, 8);  mc(row,1,4,"",CGr); row++;
+
+    // Header tabla
+    ws.setRowHeight(row, 28);
+    mc(row,1,2,"CRITERIOS — ACUERDO 029 DE 2026, ART. 14",CM,TW,true,10,"center");
+    sc(row,3,"Escala / Puntaje",CM,TW,true,9,"center");
+    sc(row,4,"Pts. Asignados",CM,TW,true,9,"center"); row++;
+
+    // ── CRITERIO 1 ────────────────────────────────────────────────────
+    secRow(row, "1", "MAXIMO NIVEL ACADEMICO ADICIONAL AL REQUERIDO", "Hasta 5 pts"); row++;
+    notaRow(row, "Solo se califica el titulo ADICIONAL al exigido por el perfil del concurso."); row++;
+    optRow(row, "Sin titulo adicional al requerido",          "0 puntos", 0,   sel(v1,"Sin titulo")); row++;
+    optRow(row, "Maestria adicional a la requerida",          "3 puntos", 3,   sel(v1,"Maestria adicional")); row++;
+    optRow(row, "Especializacion Medico-Quirurgica adicional","3 puntos", 3,   sel(v1,"Medico-Quirurgica")); row++;
+    optRow(row, "Doctorado adicional al requerido",           "5 puntos", 5,   sel(v1,"Doctorado adicional")); row++;
+    justRow(row, just1, p1); row++;
+    subtotalRow(row, "SUBTOTAL CRITERIO 1", p1); row++;
+    row++;
+
+    // ── CRITERIO 2 ────────────────────────────────────────────────────
+    secRow(row, "2", "EXPERIENCIA", "Hasta 17 pts"); row++;
+
+    subSecRow(row, "a.", "Experiencia Docente Universitaria", "Hasta 5 pts"); row++;
+    notaRow(row, "Calculada en Tiempo Completo Equivalente (TCE). Minimo exigido por el perfil: 3 anios."); row++;
+    optRow(row, "3 anios o menos (minimo requerido)",  "0 puntos", 0, sel(v2a,"3 anios o menos")); row++;
+    optRow(row, "Superior a 3 y hasta 7 anios",        "1 punto",  1, sel(v2a,"3 y hasta 7")); row++;
+    optRow(row, "Superior a 7 y hasta 11 anios",       "3 puntos", 3, sel(v2a,"7 y hasta 11")); row++;
+    optRow(row, "Superior a 11 anios",                 "5 puntos", 5, sel(v2a,"11 anios")); row++;
+    justRow(row, just2a, p2a); row++;
+
+    subSecRow(row, "b.", "Extension y Desarrollo Social", "Hasta 8 pts"); row++;
+    notaRow(row, "Proyectos de los ultimos 5 anios, cerrados/terminados/liquidados."); row++;
+    mc(row,1,4,"Como Coordinador de proyectos:", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
+    optRow(row, "Sin participacion como coordinador",              "0 puntos", 0, sel(v2bCoord,"Sin participacion como coord")); row++;
+    optRow(row, "Entre 1 y 10 proyectos como coordinador",        "2 puntos", 2, sel(v2bCoord,"1 y 10 proyectos como coord")); row++;
+    optRow(row, "Desde 11 y mas proyectos como coordinador",      "4 puntos", 4, sel(v2bCoord,"11 y mas proyectos como coord")); row++;
+    mc(row,1,4,"Como Facilitador (cursos formacion continua en IES):", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
+    optRow(row, "Sin participacion como facilitador",              "0 puntos", 0, sel(v2bFacil,"Sin participacion como facil")); row++;
+    optRow(row, "Entre 200 y 400 horas como facilitador",         "1 punto",  1, sel(v2bFacil,"200 y 400")); row++;
+    optRow(row, "401 horas o mas como facilitador",               "2 puntos", 2, sel(v2bFacil,"401 horas")); row++;
+    mc(row,1,4,"Participacion por labor en proyectos:", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
+    optRow(row, "Sin participacion por labor",                    "0 puntos", 0, sel(v2bLabor,"Sin participacion por labor")); row++;
+    optRow(row, "Entre 1 y 10 proyectos por labor",              "1 punto",  1, sel(v2bLabor,"1 y 10 proyectos por labor")); row++;
+    optRow(row, "Desde 11 y mas proyectos por labor",            "2 puntos", 2, sel(v2bLabor,"11 y mas proyectos por labor")); row++;
+    justRow(row, just2b, p2b); row++;
+
+    subSecRow(row, "c.", "Experiencia Profesional Diferente a Docente", "Hasta 2 pts"); row++;
+    optRow(row, "5 anios o menos (minimo requerido)", "0 puntos", 0, sel(v2c,"5 anios o menos")); row++;
+    optRow(row, "Superior a 5 y hasta 10 anios",      "1 punto",  1, sel(v2c,"5 y hasta 10")); row++;
+    optRow(row, "Superior a 10 anios",                "2 puntos", 2, sel(v2c,"10 anios")); row++;
+    justRow(row, just2c, p2c); row++;
+
+    subSecRow(row, "d.", "Experiencia en Cargos Academico-Administrativos en IES", "Hasta 2 pts"); row++;
+    optRow(row, "Sin experiencia en cargos academico-administrativos", "0 puntos",   0,   sel(v2d,"Sin experiencia")); row++;
+    optRow(row, "De 1 a 4 anios",                                      "0.5 puntos", 0.5, sel(v2d,"1 a 4 anios")); row++;
+    optRow(row, "Superior a 4 y hasta 8 anios",                        "1 punto",    1,   sel(v2d,"4 y hasta 8")); row++;
+    optRow(row, "Superior a 8 anios",                                  "2 puntos",   2,   sel(v2d,"8 anios")); row++;
+    justRow(row, just2d, p2d); row++;
+
+    subtotalRow(row, "SUBTOTAL CRITERIO 2", p2Total); row++;
+    row++;
+
+    // ── CRITERIO 3 ────────────────────────────────────────────────────
+    secRow(row, "3", "PRODUCTIVIDAD ACADEMICA", "Hasta 8 pts"); row++;
+    notaRow(row, "Solo publicaciones de los ultimos 5 anios. Libros, software y obras: maximo 3 autores."); row++;
+
+    subSecRow(row, "a.", "Articulos A1 Minciencias", "Hasta 2 pts"); row++;
+    optRow(row, "No presenta articulos A1", "0 puntos",   0,   sel(v3a1,"No presenta articulos A1")); row++;
+    optRow(row, "1 a 2 articulos A1",       "0.5 puntos", 0.5, sel(v3a1,"1 a 2 articulos A1")); row++;
+    optRow(row, "3 articulos A1",           "1 punto",    1,   sel(v3a1,"3 articulos A1")); row++;
+    optRow(row, "4 articulos A1",           "1.5 puntos", 1.5, sel(v3a1,"4 articulos A1")); row++;
+    optRow(row, "5 o mas articulos A1",     "2 puntos",   2,   sel(v3a1,"5 o mas articulos A1")); row++;
+
+    subSecRow(row, "b.", "Articulos A2 Minciencias", "Hasta 2 pts"); row++;
+    optRow(row, "No presenta articulos A2", "0 puntos",   0,   sel(v3a2,"No presenta articulos A2")); row++;
+    optRow(row, "1 a 2 articulos A2",       "0.5 puntos", 0.5, sel(v3a2,"1 a 2 articulos A2")); row++;
+    optRow(row, "3 articulos A2",           "1 punto",    1,   sel(v3a2,"3 articulos A2")); row++;
+    optRow(row, "4 articulos A2",           "1.5 puntos", 1.5, sel(v3a2,"4 articulos A2")); row++;
+    optRow(row, "5 o mas articulos A2",     "2 puntos",   2,   sel(v3a2,"5 o mas articulos A2")); row++;
+
+    if (detArt) { notaRow(row, "Detalle articulos: " + detArt); row++; }
+
+    subSecRow(row, "c.", "Libros (maximo 3 autores)", "Hasta 1 pt"); row++;
+    optRow(row, "No presenta libros", "0 puntos",   0,   sel(v3lib,"No presenta libros")); row++;
+    optRow(row, "1 libro",            "0.5 puntos", 0.5, sel(v3lib,"1 libro")); row++;
+    optRow(row, "2 o mas libros",     "1 punto",    1,   sel(v3lib,"2 o mas libros")); row++;
+
+    subSecRow(row, "d.", "Obras Artisticas", "Hasta 1 pt"); row++;
+    optRow(row, "No presenta obras artisticas", "0 puntos",   0,   sel(v3obr,"No presenta obras")); row++;
+    optRow(row, "1 obra",                        "0.5 puntos", 0.5, sel(v3obr,"1 obra")); row++;
+    optRow(row, "2 o mas obras",                 "1 punto",    1,   sel(v3obr,"2 o mas obras")); row++;
+
+    subSecRow(row, "e.", "Software (maximo 3 autores)", "Hasta 1 pt"); row++;
+    optRow(row, "No presenta software", "0 puntos",   0,   sel(v3sof,"No presenta software")); row++;
+    optRow(row, "1 software",            "0.5 puntos", 0.5, sel(v3sof,"1 software")); row++;
+    optRow(row, "2 o mas software",      "1 punto",    1,   sel(v3sof,"2 o mas software")); row++;
+
+    subSecRow(row, "f.", "Produccion Audiovisual y Comunicativa", "Hasta 1 pt"); row++;
+    optRow(row, "No presenta produccion audiovisual",    "0 puntos",   0,   sel(v3aud,"No presenta produccion")); row++;
+    optRow(row, "1 produccion audiovisual",              "0.5 puntos", 0.5, sel(v3aud,"1 produccion audiovisual")); row++;
+    optRow(row, "2 o mas producciones audiovisuales",    "1 punto",    1,   sel(v3aud,"2 o mas producciones")); row++;
+
+    if (detLib) { notaRow(row, "Detalle libros/obras: " + detLib); row++; }
+
+    subtotalRow(row, "SUBTOTAL CRITERIO 3", p3Total); row++;
+    row++;
+
+    // ── RESUMEN FINAL ─────────────────────────────────────────────────
+    ws.setRowHeight(row, 28); mc(row,1,4,"RESUMEN — TOTAL HOJA DE VIDA",CM,TW,true,12,"center"); row++;
+    ws.setRowHeight(row,22); mc(row,1,3,"Criterio 1 — Nivel Academico Adicional (max 5 pts)",CS,TD,true,10,"left"); sc(row,4,p1,CS,TD,true,11,"center"); row++;
+    ws.setRowHeight(row,22); mc(row,1,3,"Criterio 2 — Experiencia (max 17 pts)",CS,TD,true,10,"left"); sc(row,4,p2Total,CS,TD,true,11,"center"); row++;
+    ws.setRowHeight(row,22); mc(row,1,3,"Criterio 3 — Productividad Academica (max 8 pts)",CS,TD,true,10,"left"); sc(row,4,p3Total,CS,TD,true,11,"center"); row++;
+    ws.setRowHeight(row,34); mc(row,1,3,"TOTAL HOJA DE VIDA  (maximo 30 puntos)",CM,TW,true,13,"right"); sc(row,4,pTotal,CTot,TD,true,15,"center"); row++;
+    row++;
+
+    ws.setRowHeight(row,20); mc(row,1,4,"Observaciones del Evaluador:",CD,TW,true,10,"left"); row++;
+    ws.setRowHeight(row, Math.max(60, Math.ceil((obsGen || "").length / 60) * 18));
+    mc(row,1,4,obsGen || "(Sin observaciones)",CGr,TD,false,10,"left"); row++;
+    row++;
+
+    ws.setRowHeight(row,55);
+    mc(row,1,2,"\n\n____________________________\nFirma del Evaluador\n" + evaluador,CGr,TD,false,9,"center");
+    mc(row,3,4,"\n\n____________________________\nVo.Bo. Oficina Asuntos Profesorales",CGr,TD,false,9,"center");
+
+    d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ss.getId() + "/edit");
+    Logger.log("F3 OK — " + nombre + " — Total: " + pTotal + "/30");
+
   } catch(err) { Logger.log("Error F3: " + err); }
 }
+
+
 
 // =====================================================================
 // FORMULARIO 4: FICHA DE INGRESO (Doc Programatico)
