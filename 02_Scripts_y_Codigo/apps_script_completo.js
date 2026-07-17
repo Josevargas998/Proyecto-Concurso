@@ -396,16 +396,80 @@ function extraerPuntaje(textoOpcion) {
 }
 
 // =====================================================================
-// COMPARTIR ARCHIVO: Permite que cualquiera con el enlace pueda ver
+// COMPARTIR ARCHIVO: Comparte con editores de la hoja y público lector
 // =====================================================================
 function compartirArchivo(fileId) {
   try {
-    DriveApp.getFileById(fileId)
-      .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var file = DriveApp.getFileById(fileId);
+    
+    // 1. Permitir que cualquiera con el enlace pueda ver
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    // 2. Obtener editores de la hoja de cálculo principal y agregarlos como editores al documento
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var editores = ss.getEditors();
+    editores.forEach(function(editor) {
+      try {
+        file.addEditor(editor);
+      } catch(errEditor) {
+        Logger.log("No se pudo agregar editor " + editor.getEmail() + ": " + errEditor);
+      }
+    });
   } catch(e) {
     Logger.log("Error al compartir archivo " + fileId + ": " + e);
   }
 }
+
+// =====================================================================
+// COMPARTIR RETROACTIVO: Comparte todos los documentos antiguos con los editores
+// =====================================================================
+function compartirTodosLosDocumentosExistentes() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var nombresHojas = [
+    "Respuestas de formulario 2",
+    "Respuestas de formulario 3",
+    "Respuestas de formulario 4"
+  ];
+  var totalCompartidos = 0;
+
+  nombresHojas.forEach(function(nombreHoja) {
+    var sheet = ss.getSheetByName(nombreHoja);
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    
+    var colEnlace = -1;
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    for (var i = 0; i < headers.length; i++) {
+      if (String(headers[i]).toLowerCase().indexOf("enlace documento") >= 0) {
+        colEnlace = i + 1;
+        break;
+      }
+    }
+    if (colEnlace === -1) return;
+
+    var enlaces = sheet.getRange(2, colEnlace, lastRow - 1, 1).getValues();
+    enlaces.forEach(function(filaEnlace) {
+      var url = String(filaEnlace[0] || "").trim();
+      if (!url || url.indexOf("https://") === -1) return;
+      
+      // Extraer ID del archivo de la URL
+      var fileId = "";
+      var matchDoc = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (matchDoc) {
+        fileId = matchDoc[1];
+      }
+      
+      if (fileId) {
+        compartirArchivo(fileId);
+        totalCompartidos++;
+      }
+    });
+  });
+
+  SpreadsheetApp.getUi().alert("🔓 Compartido completado. Se sincronizaron los permisos de edición para " + totalCompartidos + " documentos con todos los editores de la tabla.");
+}
+
 
 // =====================================================================
 // FORMULARIO 3: HOJA DE CALIFICACION - Acuerdo 029 de 2026
@@ -804,6 +868,7 @@ function onOpen() {
     .addItem("🎨 Colorear todo segun facultad (Semaforo)",   "colorearTodoSemaforoPorFacultad")
     .addItem("🧹 Limpiar columnas duplicadas",               "limpiarColumnasBasura")
     .addItem("📊 Actualizar Hoja Resumen de Candidatos",     "actualizarHojaResumen")
+    .addItem("🔓 Compartir todos los docs con editores",     "compartirTodosLosDocumentosExistentes")
     .addToUi();
 }
 
