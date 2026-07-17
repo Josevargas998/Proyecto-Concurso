@@ -176,6 +176,28 @@ function getFilaDatos(hojaName) {
 }
 
 // =====================================================================
+// HELPER: Aplica bordes negros a todas las celdas de una tabla Google Doc
+// =====================================================================
+function aplicarBordesTabla(table) {
+  try {
+    for (var r = 0; r < table.getNumRows(); r++) {
+      var row = table.getRow(r);
+      for (var c = 0; c < row.getNumCells(); c++) {
+        var cell = row.getCell(c);
+        cell.setBorderColor("#000000");
+        cell.setBorderWidth(1);
+        cell.setPaddingTop(3);
+        cell.setPaddingBottom(3);
+        cell.setPaddingLeft(4);
+        cell.setPaddingRight(4);
+      }
+    }
+  } catch(e) {
+    Logger.log("aplicarBordesTabla error: " + e);
+  }
+}
+
+// =====================================================================
 // DIAGNOSTICO: Corre esta funcion para ver todos los encabezados de
 //              "Respuestas de formulario 2" en los Registros (Logger)
 // =====================================================================
@@ -316,7 +338,6 @@ function onFormSubmit_F2(e) {
         var row     = reqTable.getRow(i + 1);
         var vReq    = d.safe(item.cumpleKey);
         var obsItem = buscarObservacion(item.obsKey);
-        // Determinar SI o NO segun lo que marco el evaluador en el formulario
         var cumple;
         if (!vReq) {
           cumple = "";
@@ -330,15 +351,22 @@ function onFormSubmit_F2(e) {
           cumple = "";
         }
 
-        row.getCell(1).setText(obsItem || "");
+        // Columna OBSERVACIONES
+        var cObs = row.getCell(1);
+        cObs.setText(obsItem || "");
+        cObs.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
 
+        // Columna CUMPLE con color
         var cCump = row.getCell(2);
         cCump.setText(cumple);
-        var bgColor = cumple === "SI" ? "#b7e1cd" : (cumple === "PENDIENTE" ? "#fff2cc" : "#f4cccc");
+        var bgColor = cumple === "SI" ? "#b7e1cd" : (cumple === "NO" ? "#f4cccc" : (cumple === "PENDIENTE" ? "#fff2cc" : "#ffffff"));
         cCump.setBackgroundColor(bgColor);
         cCump.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
         cCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
       }
+
+      // Aplicar bordes negros a toda la tabla de requisitos
+      aplicarBordesTabla(reqTable);
     }
 
     // ── 4. TABLA "CUMPLE CON TODOS LOS REQUISITOS" ───────────────────
@@ -355,9 +383,23 @@ function onFormSubmit_F2(e) {
         noCell.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
         siCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
         noCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        aplicarBordesTabla(tables[t]);
         break;
       }
     }
+
+    // Aplicar bordes a la tabla de firmas (cualquier tabla con celdas de firma al final)
+    for (var t = 0; t < tables.length; t++) {
+      var numRows = tables[t].getNumRows();
+      var numCols = tables[t].getRow(0).getNumCells();
+      if (numRows >= 2 && numCols >= 2 && tables[t] !== reqTable) {
+        var txt0 = tables[t].getRow(0).getCell(0).getText().toLowerCase();
+        if (txt0.indexOf("revision") >= 0 || txt0.indexOf("nombre") >= 0 || txt0.indexOf("firma") >= 0 || txt0.indexOf("verificacion") >= 0) {
+          aplicarBordesTabla(tables[t]);
+        }
+      }
+    }
+
 
     copyDoc.saveAndClose();
     d.hoja.getRange(d.ult, colEnlace).setValue(
