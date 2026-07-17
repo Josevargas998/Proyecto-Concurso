@@ -12,6 +12,35 @@ var FORM_IDS = {
 };
 
 // =====================================================================
+// MAPEO GLOBAL DE PROGRAMAS A FACULTADES (ACUERDO 029 DE 2026)
+// =====================================================================
+var GLOBAL_PROG_FACULTAD = {
+  "licenciatura en educacion fisica":    "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "educacion fisica":                    "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "licenciatura en lenguas modernas":    "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "lenguas modernas":                    "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "licenciatura en literatura":          "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "literatura y lengua castellana":      "FACULTAD DE CIENCIAS DE LA EDUCACION",
+  "ingenieria civil":                    "FACULTAD DE INGENIERIA",
+  "ingenieria electronica":              "FACULTAD DE INGENIERIA",
+  "ingenieria de sistemas":              "FACULTAD DE INGENIERIA",
+  "gerontologia":                        "FACULTAD DE CIENCIAS DE LA SALUD",
+  "medicina":                            "FACULTAD DE CIENCIAS DE LA SALUD",
+  "enfermeria":                          "FACULTAD DE CIENCIAS DE LA SALUD",
+  "seguridad y salud en el trabajo":     "FACULTAD DE CIENCIAS DE LA SALUD",
+  "ciencias de la informacion":          "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+  "archivistica":                        "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+  "trabajo social":                      "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+  "comunicacion social":                 "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+  "periodismo":                          "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+  "biologia":                            "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
+  "fisica":                              "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
+  "administracion financiera":           "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS",
+  "administracion de negocios":          "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS"
+};
+
+
+// =====================================================================
 // FUNCIONES AUXILIARES
 // =====================================================================
 function getFilaDatos(hojaName) {
@@ -74,40 +103,12 @@ function onFormSubmit_F2(e) {
     // SI el concepto contiene "CUMPLE CON TODOS" → tabla final = SI, de lo contrario NO
     var cumpleTodos = conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0;
 
-    // Mapa explicito programa -> facultad
-    // Necesario porque algunos programas no tienen guion (ej: Seguridad y Salud en el Trabajo)
-    // y otros tienen guion en su nombre (ej: Comunicacion Social - Periodismo)
-    var PROG_FACULTAD = {
-      "licenciatura en educacion fisica":    "CIENCIAS DE LA EDUCACION",
-      "educacion fisica":                    "CIENCIAS DE LA EDUCACION",
-      "licenciatura en lenguas modernas":    "CIENCIAS DE LA EDUCACION",
-      "lenguas modernas":                    "CIENCIAS DE LA EDUCACION",
-      "licenciatura en literatura":          "CIENCIAS DE LA EDUCACION",
-      "literatura y lengua castellana":      "CIENCIAS DE LA EDUCACION",
-      "ingenieria civil":                    "INGENIERIA",
-      "ingenieria electronica":              "INGENIERIA",
-      "ingenieria de sistemas":              "INGENIERIA",
-      "gerontologia":                        "CIENCIAS DE LA SALUD",
-      "medicina":                            "CIENCIAS DE LA SALUD",
-      "enfermeria":                          "CIENCIAS DE LA SALUD",
-      "seguridad y salud en el trabajo":     "CIENCIAS DE LA SALUD",
-      "ciencias de la informacion":          "CIENCIAS HUMANAS Y BELLAS ARTES",
-      "archivistica":                        "CIENCIAS HUMANAS Y BELLAS ARTES",
-      "trabajo social":                      "CIENCIAS HUMANAS Y BELLAS ARTES",
-      "comunicacion social":                 "CIENCIAS HUMANAS Y BELLAS ARTES",
-      "periodismo":                          "CIENCIAS HUMANAS Y BELLAS ARTES",
-      "biologia":                            "CIENCIAS BASICAS Y TECNOLOGIAS",
-      "fisica":                              "CIENCIAS BASICAS Y TECNOLOGIAS",
-      "administracion financiera":           "CIENCIAS ECONOMICAS Y ADMINISTRATIVAS",
-      "administracion de negocios":          "CIENCIAS ECONOMICAS Y ADMINISTRATIVAS"
-    };
-
     // Buscar la facultad correcta segun el nombre del programa
     function getFacultad(nombrePrograma) {
       var pLow = (nombrePrograma || "").toLowerCase()
                    .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quitar tildes
-      for (var clave in PROG_FACULTAD) {
-        if (pLow.indexOf(clave) >= 0) return PROG_FACULTAD[clave];
+      for (var clave in GLOBAL_PROG_FACULTAD) {
+        if (pLow.indexOf(clave) >= 0) return GLOBAL_PROG_FACULTAD[clave];
       }
       // Fallback: si Form 1 envio "FACULTAD - Programa", usar la parte izquierda del guion
       if (nombrePrograma.indexOf("-") > -1) return nombrePrograma.split("-")[0].trim().toUpperCase();
@@ -352,29 +353,10 @@ function onFormSubmit_F3(e) {
     var ssCopy = SpreadsheetApp.openById(file.getId());
     var ws     = ssCopy.getSheets()[0];
 
-    // Mapa programa -> facultad (reutilizar logica de F2)
-    var PROG_FACULTAD_F3 = {
-      "Licenciatura en Educacion Fisica":     "FACULTAD DE CIENCIAS DE LA EDUCACION",
-      "Licenciatura en Lenguas Modernas":     "FACULTAD DE CIENCIAS DE LA EDUCACION",
-      "Licenciatura en Literatura":           "FACULTAD DE CIENCIAS DE LA EDUCACION",
-      "Ingenieria Civil":                     "FACULTAD DE INGENIERIA",
-      "Ingenieria Electronica":               "FACULTAD DE INGENIERIA",
-      "Ingenieria de Sistemas":               "FACULTAD DE INGENIERIA",
-      "Gerontologia":                         "FACULTAD DE CIENCIAS DE LA SALUD",
-      "Medicina":                             "FACULTAD DE CIENCIAS DE LA SALUD",
-      "Enfermeria":                           "FACULTAD DE CIENCIAS DE LA SALUD",
-      "Seguridad y Salud":                    "FACULTAD DE CIENCIAS DE LA SALUD",
-      "Ciencias de la Informacion":           "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
-      "Trabajo Social":                       "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
-      "Comunicacion Social":                  "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
-      "Biologia":                             "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
-      "Fisica":                               "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
-      "Administracion Financiera":            "FACULTAD DE CIENCIAS ECONOMICAS"
-    };
     var fac3 = "";
-    var progNorm = prog.toLowerCase();
-    for (var key3 in PROG_FACULTAD_F3) {
-      if (progNorm.indexOf(key3.toLowerCase()) >= 0) { fac3 = PROG_FACULTAD_F3[key3]; break; }
+    var progNorm = (prog || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (var key3 in GLOBAL_PROG_FACULTAD) {
+      if (progNorm.indexOf(key3) >= 0) { fac3 = GLOBAL_PROG_FACULTAD[key3]; break; }
     }
     if (!fac3) fac3 = prog;
 
@@ -456,9 +438,11 @@ function onFormSubmit_F3(e) {
     d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ssCopy.getId() + "/edit");
     Logger.log("F3 OK — " + nombre + " — Total HV: " + pHojaVida + "/30");
   } catch(err) { Logger.log("Error F3: " + err); }
+}
 
 // =====================================================================
 // FORMULARIO 4: FICHA DE INGRESO (Doc Programatico)
+
 // =====================================================================
 function onFormSubmit_F4(e) {
   try {
