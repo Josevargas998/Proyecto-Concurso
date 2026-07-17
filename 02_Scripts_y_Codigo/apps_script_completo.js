@@ -882,47 +882,38 @@ function agregarPreguntasFaltantesF3() {
   var titulosExistentes = items.map(function(item) { return item.getTitle().toLowerCase(); });
 
   var nuevasPreguntas = [
-    {
-      tipo: "TXT",
-      titulo: "Nivel Academico Acreditado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Institucion Pregrado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Titulo de Pregrado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Puntaje Titulo Pregrado"
-    },
-    {
-      tipo: "MC",
-      titulo: "Posgrado Requerido por el Perfil",
-      opciones: ["Especializacion", "Maestria", "Doctorado", "No Presenta"]
-    },
-    {
-      tipo: "TXT",
-      titulo: "Institucion Posgrado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Titulo de Posgrado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Puntaje Titulo Posgrado"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Justificacion - Nivel Academico"
-    },
-    {
-      tipo: "TXT",
-      titulo: "Puntaje Total Criterio 1"
-    }
+    // ── CRITERIO 1: TITULOS ──
+    { tipo: "TXT", titulo: "Nivel Academico Acreditado" },
+    { tipo: "TXT", titulo: "Institucion Pregrado" },
+    { tipo: "TXT", titulo: "Titulo de Pregrado" },
+    { tipo: "TXT", titulo: "Puntaje Titulo Pregrado" },
+    { tipo: "MC",  titulo: "Posgrado Requerido por el Perfil", opciones: ["Especializacion", "Maestria", "Doctorado", "No Presenta"] },
+    { tipo: "TXT", titulo: "Institucion Posgrado" },
+    { tipo: "TXT", titulo: "Titulo de Posgrado" },
+    { tipo: "TXT", titulo: "Puntaje Titulo Posgrado" },
+    { tipo: "TXT", titulo: "Justificacion - Nivel Academico" },
+    { tipo: "TXT", titulo: "Puntaje Total Criterio 1" },
+
+    // ── CRITERIO 2: EXPERIENCIA ──
+    { tipo: "TXT", titulo: "2a. Experiencia Docente" },
+    { tipo: "TXT", titulo: "Justificacion - Experiencia Docente" },
+    { tipo: "TXT", titulo: "2b. Experiencia en Investigacion" },
+    { tipo: "TXT", titulo: "Justificacion - Investigacion" },
+    { tipo: "TXT", titulo: "2c. Experiencia en Extension" },
+    { tipo: "TXT", titulo: "Justificacion - Extension / Proyeccion" },
+    { tipo: "TXT", titulo: "2d. Experiencia Profesional Diferente" },
+    { tipo: "TXT", titulo: "Justificacion - Experiencia Profesional" },
+    { tipo: "TXT", titulo: "2e. Experiencia en Cargos Academico" },
+    { tipo: "TXT", titulo: "Justificacion - Cargos Academico Administrativos" },
+    { tipo: "TXT", titulo: "Puntaje Total Criterio 2" },
+
+    // ── CRITERIO 3: PRODUCTIVIDAD ACADEMICA ──
+    { tipo: "TXT", titulo: "3a. Articulos en Revistas Indexadas" },
+    { tipo: "TXT", titulo: "Detalle de articulos indexados" },
+    { tipo: "TXT", titulo: "3b. Libros, Obras, Software" },
+    { tipo: "TXT", titulo: "Detalle de libros / obras" },
+    { tipo: "TXT", titulo: "Puntaje Total Criterio 3" },
+    { tipo: "TXT", titulo: "Observaciones Generales del Evaluador" }
   ];
 
   var creadas = 0;
@@ -943,10 +934,72 @@ function agregarPreguntasFaltantesF3() {
   }
 
   if (creadas > 0) {
-    SpreadsheetApp.getUi().alert("Se crearon " + creadas + " preguntas del Criterio 1 en el Formulario 3 con éxito.");
+    // Si se crearon preguntas, reordenar el Formulario 3
+    reordenarFormulario3();
+    SpreadsheetApp.getUi().alert("Se crearon " + creadas + " preguntas (Criterio 1, 2 y 3) en el Formulario 3 con éxito.");
   } else {
-    SpreadsheetApp.getUi().alert("Las preguntas de Títulos ya existían en el Formulario 3.");
+    SpreadsheetApp.getUi().alert("Las preguntas ya existían en el Formulario 3.");
   }
+}
+
+// =====================================================================
+// REORDENAR FORMULARIO 3
+// Reorganiza todas las preguntas del Formulario 3 en orden lógico.
+// =====================================================================
+function reordenarFormulario3() {
+  var form  = FormApp.openById(FORM_IDS[3]);
+  var items = form.getItems();
+
+  var ordenDeseado = [
+    "Cedula del Candidato",
+    "Nombre Completo del Candidato",
+    "Programa / Area del Concurso",
+    "Perfil del Cargo",
+    "Nombre del Evaluador",
+    "Nivel Academico Acreditado",
+    "Institucion Pregrado",
+    "Titulo de Pregrado",
+    "Puntaje Titulo Pregrado",
+    "Posgrado Requerido por el Perfil",
+    "Institucion Posgrado",
+    "Titulo de Posgrado",
+    "Puntaje Titulo Posgrado",
+    "Justificacion - Nivel Academico",
+    "Puntaje Total Criterio 1",
+    "2a. Experiencia Docente",
+    "Justificacion - Experiencia Docente",
+    "2b. Experiencia en Investigacion",
+    "Justificacion - Investigacion",
+    "2c. Experiencia en Extension",
+    "Justificacion - Extension / Proyeccion",
+    "2d. Experiencia Profesional Diferente",
+    "Justificacion - Experiencia Profesional",
+    "2e. Experiencia en Cargos Academico",
+    "Justificacion - Cargos Academico Administrativos",
+    "Puntaje Total Criterio 2",
+    "3a. Articulos en Revistas Indexadas",
+    "Detalle de articulos indexados",
+    "3b. Libros, Obras, Software",
+    "Detalle de libros / obras",
+    "Puntaje Total Criterio 3",
+    "Observaciones Generales del Evaluador"
+  ];
+
+  var posActual = 0;
+  for (var o = 0; o < ordenDeseado.length; o++) {
+    var clave = ordenDeseado[o].toLowerCase();
+    for (var j = posActual; j < items.length; j++) {
+      if (items[j].getTitle().toLowerCase().indexOf(clave) !== -1) {
+        if (j !== posActual) {
+          form.moveItem(j, posActual);
+          items = form.getItems(); // refrescar
+        }
+        posActual++;
+        break;
+      }
+    }
+  }
+  Logger.log("Formulario 3 reordenado correctamente.");
 }
 
 
