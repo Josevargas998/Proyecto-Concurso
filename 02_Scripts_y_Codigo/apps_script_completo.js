@@ -456,26 +456,6 @@ function onFormSubmit_F3(e) {
     d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ssCopy.getId() + "/edit");
     Logger.log("F3 OK — " + nombre + " — Total HV: " + pHojaVida + "/30");
   } catch(err) { Logger.log("Error F3: " + err); }
-}
-      
-      ["3a. Articulos Revistas:", d.safe("3a. Articulos en Revistas Indexadas")],
-      ["Detalle Articulos:", d.safe("Detalle de articulos indexados")],
-      
-      ["3b. Libros / Obras:", d.safe("3b. Libros, Obras, Software")],
-      ["Detalle Libros / Obras:", d.safe("Detalle de libros / obras")],
-      
-      ["Observaciones:", d.safe("Observaciones Generales del Evaluador")]
-    ];
-    for (var i = 0; i < data.length; i++) {
-      det.getRange(i + 6, 1).setValue(data[i][0]);
-      det.getRange(i + 6, 2).setValue(data[i][1]);
-    }
-    det.setColumnWidth(1, 250);
-    det.setColumnWidth(2, 350);
-
-    d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ssCopy.getId() + "/edit");
-  } catch(err) { Logger.log("Error F3: " + err); }
-}
 
 // =====================================================================
 // FORMULARIO 4: FICHA DE INGRESO (Doc Programatico)
