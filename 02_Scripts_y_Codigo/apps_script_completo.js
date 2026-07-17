@@ -258,6 +258,24 @@ function onFormSubmit_F2(e) {
       "https://docs.google.com/document/d/" + copia.getId() + "/edit"
     );
 
+    // ── 5. GENERAR ENLACE AL FORMULARIO 3 (Mapeado automatico si cumple) ──
+    var colLinkF3 = d.getColIndex("Llenar Formulario 3");
+    if (colLinkF3 === -1) {
+      colLinkF3 = d.enc.length + 2; // Columna siguiente
+      d.hoja.getRange(1, colLinkF3).setValue("Llenar Formulario 3");
+    }
+
+    if (cumpleTodos) {
+      // Generar el enlace prellenado para el Formulario 3
+      var f3 = FormApp.openById(FORM_IDS[3]);
+      var map3 = getItemsMapping(f3);
+      var linkF3 = buildUrl(f3, map3, cedula, nombre, prog, perfil);
+      d.hoja.getRange(d.ult, colLinkF3).setValue(linkF3);
+      Logger.log("Enlace prellenado Formulario 3 generado para: " + nombre);
+    } else {
+      d.hoja.getRange(d.ult, colLinkF3).setValue("N/A - No cumple requisitos habilitantes");
+    }
+
   } catch(err) { Logger.log("Error F2: " + err); }
 }
 
@@ -853,5 +871,83 @@ function reordenarFormulario2() {
   }
   Logger.log("Formulario 2 reordenado correctamente.");
 }
+
+// =====================================================================
+// AGREGAR PREGUNTAS DEL CRITERIO 1 (TITULOS) AL FORMULARIO 3
+// Ejecutar una sola vez. Crea y organiza las preguntas básicas de títulos
+// =====================================================================
+function agregarPreguntasFaltantesF3() {
+  var form = FormApp.openById(FORM_IDS[3]);
+  var items = form.getItems();
+  var titulosExistentes = items.map(function(item) { return item.getTitle().toLowerCase(); });
+
+  var nuevasPreguntas = [
+    {
+      tipo: "TXT",
+      titulo: "Nivel Academico Acreditado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Institucion Pregrado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Titulo de Pregrado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Puntaje Titulo Pregrado"
+    },
+    {
+      tipo: "MC",
+      titulo: "Posgrado Requerido por el Perfil",
+      opciones: ["Especializacion", "Maestria", "Doctorado", "No Presenta"]
+    },
+    {
+      tipo: "TXT",
+      titulo: "Institucion Posgrado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Titulo de Posgrado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Puntaje Titulo Posgrado"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Justificacion - Nivel Academico"
+    },
+    {
+      tipo: "TXT",
+      titulo: "Puntaje Total Criterio 1"
+    }
+  ];
+
+  var creadas = 0;
+  for (var i = 0; i < nuevasPreguntas.length; i++) {
+    var p = nuevasPreguntas[i];
+    if (titulosExistentes.indexOf(p.titulo.toLowerCase()) === -1) {
+      if (p.tipo === "MC") {
+        var mcItem = form.addMultipleChoiceItem();
+        mcItem.setTitle(p.titulo);
+        mcItem.setChoices(p.opciones.map(function(op) { return mcItem.createChoice(op); }));
+      } else if (p.tipo === "TXT") {
+        var txtItem = form.addParagraphTextItem();
+        txtItem.setTitle(p.titulo);
+      }
+      creadas++;
+      Logger.log("Creada pregunta en F3: " + p.titulo);
+    }
+  }
+
+  if (creadas > 0) {
+    SpreadsheetApp.getUi().alert("Se crearon " + creadas + " preguntas del Criterio 1 en el Formulario 3 con éxito.");
+  } else {
+    SpreadsheetApp.getUi().alert("Las preguntas de Títulos ya existían en el Formulario 3.");
+  }
+}
+
 
 
