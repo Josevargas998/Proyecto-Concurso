@@ -709,3 +709,140 @@ function actualizarPlantillaF2() {
   doc.saveAndClose();
   Logger.log("Plantilla actualizada correctamente con " + REQUISITOS.length + " requisitos en orden a,b,c,d,e,f,g,h,i,m,n.");
 }
+
+// =====================================================================
+// AGREGAR PREGUNTAS FALTANTES EN EL FORMULARIO 2 (j, k, l)
+// Ejecutar una sola vez. Busca si existen las preguntas para (j), (k), (l)
+// en el formulario y si no existen, las crea automáticamente.
+// =====================================================================
+function agregarPreguntasFaltantesF2() {
+  var form = FormApp.openById(FORM_IDS[2]);
+  var items = form.getItems();
+  var titulosExistentes = items.map(function(item) { return item.getTitle().toLowerCase(); });
+
+  var nuevasPreguntas = [
+    {
+      tipo: "MC", // Multiple Choice
+      titulo: "(j) Certificacion de experiencia en investigacion (rol, titulo del proyecto)",
+      opciones: ["CUMPLE", "NO CUMPLE", "PENDIENTE - Requiere revision"]
+    },
+    {
+      tipo: "TXT", // Text
+      titulo: "Observaciones - Certificacion de experiencia en investigacion"
+    },
+    {
+      tipo: "MC",
+      titulo: "(k) Certificacion de experiencia en extension o desarrollo social",
+      opciones: ["CUMPLE", "NO CUMPLE", "PENDIENTE - Requiere revision"]
+    },
+    {
+      tipo: "TXT",
+      titulo: "Observaciones - Certificacion de experiencia en extension"
+    },
+    {
+      tipo: "MC",
+      titulo: "(l) Certificacion de experiencia en cargos academico-administrativos en IES",
+      opciones: ["CUMPLE", "NO CUMPLE", "PENDIENTE - Requiere revision"]
+    },
+    {
+      tipo: "TXT",
+      titulo: "Observaciones - Certificacion de experiencia en cargos"
+    }
+  ];
+
+  var creadas = 0;
+  for (var i = 0; i < nuevasPreguntas.length; i++) {
+    var p = nuevasPreguntas[i];
+    if (titulosExistentes.indexOf(p.titulo.toLowerCase()) === -1) {
+      if (p.tipo === "MC") {
+        var mcItem = form.addMultipleChoiceItem();
+        mcItem.setTitle(p.titulo);
+        mcItem.setChoices(p.opciones.map(function(op) { return mcItem.createChoice(op); }));
+        mcItem.setRequired(true);
+      } else if (p.tipo === "TXT") {
+        var txtItem = form.addParagraphTextItem();
+        txtItem.setTitle(p.titulo);
+      }
+      creadas++;
+      Logger.log("Creada pregunta: " + p.titulo);
+    }
+  }
+
+  if (creadas > 0) {
+    // Si creamos preguntas nuevas, llamamos a reordenar para que queden en el lugar alfabético correcto
+    Logger.log("Reordenando formulario...");
+    reordenarFormulario2();
+    SpreadsheetApp.getUi().alert("Se crearon " + creadas + " preguntas y el Formulario 2 fue reordenado con éxito.");
+  } else {
+    SpreadsheetApp.getUi().alert("Las preguntas ya existían en el formulario.");
+  }
+}
+
+// =====================================================================
+// REORDENAR FORMULARIO 2
+// Reorganiza todas las preguntas del Formulario 2 en orden alfabetico.
+// =====================================================================
+function reordenarFormulario2() {
+  var form  = FormApp.openById(FORM_IDS[2]);
+  var items = form.getItems();
+
+  var ordenDeseado = [
+    "Cedula del Candidato",
+    "Nombre Completo del Candidato",
+    "Programa / Area del Concurso",
+    "Perfil del Cargo",
+    "Fecha de Verificacion",
+    "(a) Formato de inscripcion",
+    "Observaciones - Formato de Inscripcion",
+    "(b) Hoja de Vida UQ",
+    "Observaciones - Hoja de Vida UQ",
+    "(c) Fotocopia del titulo de pregrado",
+    "Observaciones - Titulo Pregrado",
+    "(d) Fotocopia de titulos o actas de grado de posgrado",
+    "Observaciones - Titulo Posgrado",
+    "(e) Fotocopia de la cedula",
+    "Observaciones - Cedula / Libreta Militar",
+    "(f) Fotocopia de matricula",
+    "Observaciones - Matricula / Tarjeta Profesional",
+    "(g) Certificado de inhabilidades por delitos",
+    "delitos sexuales",
+    "(h) Certificado de registro de deudores",
+    "registro de deudores alimentarios",
+    "(i) Certificacion de experiencia especifica en docencia",
+    "experiencia especifica en docencia",
+    "(j) Certificacion de experiencia en investigacion",
+    "Observaciones - Certificacion de experiencia en investigacion",
+    "(k) Certificacion de experiencia en extension",
+    "Observaciones - Certificacion de experiencia en extension",
+    "(l) Certificacion de experiencia en cargos academico",
+    "Observaciones - Certificacion de experiencia en cargos",
+    "(m) Certificacion de experiencia profesional diferente a docencia",
+    "experiencia profesional diferente a docencia",
+    "(n) Certificacion de suficiencia linguistica",
+    "suficiencia linguistica nivel B1",
+    "Documentos debidamente foliados",
+    "Documentos debidamente foliados",
+    "5. Certificados disciplinarios",
+    "Observaciones - Certificados disciplinarios",
+    "Concepto Final",
+    "Observaciones Generales"
+  ];
+
+  var posActual = 0;
+  for (var o = 0; o < ordenDeseado.length; o++) {
+    var clave = ordenDeseado[o].toLowerCase();
+    for (var j = posActual; j < items.length; j++) {
+      if (items[j].getTitle().toLowerCase().indexOf(clave) !== -1) {
+        if (j !== posActual) {
+          form.moveItem(j, posActual);
+          items = form.getItems(); // refrescar
+        }
+        posActual++;
+        break;
+      }
+    }
+  }
+  Logger.log("Formulario 2 reordenado correctamente.");
+}
+
+
