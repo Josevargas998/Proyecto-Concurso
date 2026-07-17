@@ -585,7 +585,26 @@ function onFormSubmit_F3(e) {
       sc(r, 4, selected ? score : "", bg, TD, bld, 10, "center");
       ws.setRowHeight(r, 20);
     }
-    function sel(resp, key) { return (resp || "").toLowerCase().indexOf((key || "").toLowerCase()) >= 0; }
+    function sel(resp, key) {
+      if (!resp) return false;
+      var r = resp.toLowerCase().trim();
+      var k = key.toLowerCase().trim();
+      
+      // Evitar que "10 anios" coincida con "5 y hasta 10 anios"
+      if (k === "10 anios" && r.indexOf("hasta 10") >= 0) {
+        return false;
+      }
+      // Evitar que "11 anios" coincida con "7 y hasta 11 anios"
+      if (k === "11 anios" && r.indexOf("hasta 11") >= 0) {
+        return false;
+      }
+      // Evitar que "8 anios" coincida con "4 y hasta 8 anios" en cargos directivos
+      if (k === "8 anios" && r.indexOf("hasta 8") >= 0) {
+        return false;
+      }
+      
+      return r.indexOf(k) >= 0;
+    }
     function notaRow(r, txt) { mc(r, 1, 4, txt, CN, TD, false, 9, "left"); ws.setRowHeight(r, 18); }
     function justRow(r, txt, pts) {
       mc(r, 1, 3, "Justificacion: " + (txt || "(No especificada)"), CN, TD, false, 9, "left");
