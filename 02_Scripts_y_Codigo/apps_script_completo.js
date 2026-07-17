@@ -369,7 +369,8 @@ function onFormSubmit_F3(e) {
     ws.getRange("D70").setValue(p1);
     ws.getRange("D71").setValue(p2Total);
     ws.getRange("D72").setValue(p3Total);
-    ws.getRange("C73").setValue(pHojaVida);
+    ws.getRange("D73").setValue(pHojaVida);
+
 
     // ── HOJA DETALLE ─────────────────────────────────────────────────
     var det = ssCopy.insertSheet("Detalle Evaluacion - Acuerdo 029");
