@@ -587,19 +587,20 @@ function onFormSubmit_F3(e) {
     }
     function sel(resp, key) {
       if (!resp) return false;
-      var r = resp.toLowerCase().trim();
-      var k = key.toLowerCase().trim();
+      // Normalizar texto eliminando tildes y reemplazando ñ por n para comparar de forma segura internamente
+      var r = resp.toLowerCase().trim().replace(/ñ/g, 'n').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      var k = key.toLowerCase().trim().replace(/ñ/g, 'n').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       
-      // Evitar que "10 anios" coincida con "5 y hasta 10 anios"
-      if (k === "10 anios" && r.indexOf("hasta 10") >= 0) {
+      // Evitar que "10 anos" coincida con "5 y hasta 10 anos"
+      if (k === "10 anos" && r.indexOf("hasta 10") >= 0) {
         return false;
       }
-      // Evitar que "11 anios" coincida con "7 y hasta 11 anios"
-      if (k === "11 anios" && r.indexOf("hasta 11") >= 0) {
+      // Evitar que "11 anos" coincida con "7 y hasta 11 anos"
+      if (k === "11 anos" && r.indexOf("hasta 11") >= 0) {
         return false;
       }
-      // Evitar que "8 anios" coincida con "4 y hasta 8 anios" en cargos directivos
-      if (k === "8 anios" && r.indexOf("hasta 8") >= 0) {
+      // Evitar que "8 anos" coincida con "4 y hasta 8 anos" en cargos directivos
+      if (k === "8 anos" && r.indexOf("hasta 8") >= 0) {
         return false;
       }
       
@@ -661,40 +662,40 @@ function onFormSubmit_F3(e) {
     secRow(row, "2", "EXPERIENCIA", "Hasta 17 pts"); row++;
 
     subSecRow(row, "a.", "Experiencia Docente Universitaria", "Hasta 5 pts"); row++;
-    notaRow(row, "Calculada en Tiempo Completo Equivalente (TCE). Minimo exigido por el perfil: 3 anios."); row++;
-    optRow(row, "3 anios o menos (minimo requerido)",  "0 puntos", 0, sel(v2a,"3 anios o menos")); row++;
-    optRow(row, "Superior a 3 y hasta 7 anios",        "1 punto",  1, sel(v2a,"3 y hasta 7")); row++;
-    optRow(row, "Superior a 7 y hasta 11 anios",       "3 puntos", 3, sel(v2a,"7 y hasta 11")); row++;
-    optRow(row, "Superior a 11 anios",                 "5 puntos", 5, sel(v2a,"11 anios")); row++;
+    notaRow(row, "Calculada en Tiempo Completo Equivalente (TCE). Mínimo exigido por el perfil: 3 años."); row++;
+    optRow(row, "3 años o menos (mínimo requerido)",  "0 puntos", 0, sel(v2a,"3 años o menos")); row++;
+    optRow(row, "Superior a 3 y hasta 7 años",        "1 punto",  1, sel(v2a,"3 y hasta 7")); row++;
+    optRow(row, "Superior a 7 y hasta 11 años",       "3 puntos", 3, sel(v2a,"7 y hasta 11")); row++;
+    optRow(row, "Superior a 11 años",                 "5 puntos", 5, sel(v2a,"11 años")); row++;
     justRow(row, just2a, p2a); row++;
 
-    subSecRow(row, "b.", "Extension y Desarrollo Social", "Hasta 8 pts"); row++;
-    notaRow(row, "Proyectos de los ultimos 5 anios, cerrados/terminados/liquidados."); row++;
+    subSecRow(row, "b.", "Extensión y Desarrollo Social", "Hasta 8 pts"); row++;
+    notaRow(row, "Proyectos de los últimos 5 años, cerrados/terminados/liquidados."); row++;
     mc(row,1,4,"Como Coordinador de proyectos:", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
-    optRow(row, "Sin participacion como coordinador",              "0 puntos", 0, sel(v2bCoord,"Sin participacion como coord")); row++;
+    optRow(row, "Sin participación como coordinador",              "0 puntos", 0, sel(v2bCoord,"Sin participacion como coord")); row++;
     optRow(row, "Entre 1 y 10 proyectos como coordinador",        "2 puntos", 2, sel(v2bCoord,"1 y 10 proyectos como coord")); row++;
-    optRow(row, "Desde 11 y mas proyectos como coordinador",      "4 puntos", 4, sel(v2bCoord,"11 y mas proyectos como coord")); row++;
-    mc(row,1,4,"Como Facilitador (cursos formacion continua en IES):", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
-    optRow(row, "Sin participacion como facilitador",              "0 puntos", 0, sel(v2bFacil,"Sin participacion como facil")); row++;
+    optRow(row, "Desde 11 y más proyectos como coordinador",      "4 puntos", 4, sel(v2bCoord,"11 y mas proyectos como coord")); row++;
+    mc(row,1,4,"Como Facilitador (cursos formación continua en IES):", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
+    optRow(row, "Sin participación como facilitador",              "0 puntos", 0, sel(v2bFacil,"Sin participacion como facil")); row++;
     optRow(row, "Entre 200 y 400 horas como facilitador",         "1 punto",  1, sel(v2bFacil,"200 y 400")); row++;
-    optRow(row, "401 horas o mas como facilitador",               "2 puntos", 2, sel(v2bFacil,"401 horas")); row++;
-    mc(row,1,4,"Participacion por labor en proyectos:", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
-    optRow(row, "Sin participacion por labor",                    "0 puntos", 0, sel(v2bLabor,"Sin participacion por labor")); row++;
+    optRow(row, "401 horas o más como facilitador",               "2 puntos", 2, sel(v2bFacil,"401 horas")); row++;
+    mc(row,1,4,"Participación por labor en proyectos:", CN,TD,true,9,"left"); ws.setRowHeight(row,18); row++;
+    optRow(row, "Sin participación por labor",                    "0 puntos", 0, sel(v2bLabor,"Sin participacion por labor")); row++;
     optRow(row, "Entre 1 y 10 proyectos por labor",              "1 punto",  1, sel(v2bLabor,"1 y 10 proyectos por labor")); row++;
-    optRow(row, "Desde 11 y mas proyectos por labor",            "2 puntos", 2, sel(v2bLabor,"11 y mas proyectos por labor")); row++;
+    optRow(row, "Desde 11 y más proyectos por labor",            "2 puntos", 2, sel(v2bLabor,"11 y mas proyectos por labor")); row++;
     justRow(row, just2b, p2b); row++;
 
     subSecRow(row, "c.", "Experiencia Profesional Diferente a Docente", "Hasta 2 pts"); row++;
-    optRow(row, "5 anios o menos (minimo requerido)", "0 puntos", 0, sel(v2c,"5 anios o menos")); row++;
-    optRow(row, "Superior a 5 y hasta 10 anios",      "1 punto",  1, sel(v2c,"5 y hasta 10")); row++;
-    optRow(row, "Superior a 10 anios",                "2 puntos", 2, sel(v2c,"10 anios")); row++;
+    optRow(row, "5 años o menos (mínimo requerido)", "0 puntos", 0, sel(v2c,"5 años o menos")); row++;
+    optRow(row, "Superior a 5 y hasta 10 años",      "1 punto",  1, sel(v2c,"5 y hasta 10")); row++;
+    optRow(row, "Superior a 10 años",                "2 puntos", 2, sel(v2c,"10 años")); row++;
     justRow(row, just2c, p2c); row++;
 
-    subSecRow(row, "d.", "Experiencia en Cargos Academico-Administrativos en IES", "Hasta 2 pts"); row++;
-    optRow(row, "Sin experiencia en cargos academico-administrativos", "0 puntos",   0,   sel(v2d,"Sin experiencia")); row++;
-    optRow(row, "De 1 a 4 anios",                                      "0.5 puntos", 0.5, sel(v2d,"1 a 4 anios")); row++;
-    optRow(row, "Superior a 4 y hasta 8 anios",                        "1 punto",    1,   sel(v2d,"4 y hasta 8")); row++;
-    optRow(row, "Superior a 8 anios",                                  "2 puntos",   2,   sel(v2d,"8 anios")); row++;
+    subSecRow(row, "d.", "Experiencia en Cargos Académico-Administrativos en IES", "Hasta 2 pts"); row++;
+    optRow(row, "Sin experiencia en cargos académico-administrativos", "0 puntos",   0,   sel(v2d,"Sin experiencia")); row++;
+    optRow(row, "De 1 a 4 años",                                      "0.5 puntos", 0.5, sel(v2d,"1 a 4 años")); row++;
+    optRow(row, "Superior a 4 y hasta 8 años",                        "1 punto",    1,   sel(v2d,"4 y hasta 8")); row++;
+    optRow(row, "Superior a 8 años",                                  "2 puntos",   2,   sel(v2d,"8 años")); row++;
     justRow(row, just2d, p2d); row++;
 
     subtotalRow(row, "SUBTOTAL CRITERIO 2", p2Total); row++;
@@ -702,7 +703,7 @@ function onFormSubmit_F3(e) {
 
     // ── CRITERIO 3 ────────────────────────────────────────────────────
     secRow(row, "3", "PRODUCTIVIDAD ACADEMICA", "Hasta 8 pts"); row++;
-    notaRow(row, "Solo publicaciones de los ultimos 5 anios. Libros, software y obras: maximo 3 autores."); row++;
+    notaRow(row, "Solo publicaciones de los últimos 5 años. Libros, software y obras: máximo 3 autores."); row++;
 
     subSecRow(row, "a.", "Articulos A1 Minciencias", "Hasta 2 pts"); row++;
     optRow(row, "No presenta articulos A1", "0 puntos",   0,   sel(v3a1,"No presenta articulos A1")); row++;
@@ -1134,10 +1135,10 @@ function actualizarHojaResumen() {
         var p2   = Math.min(17, p2a + p2b + p2c + p2d);
         var p3a1 = extraerPuntaje(r3["3a. articulos en revistas indexadas - categoria a1 minciencias"] || "");
         var p3a2 = extraerPuntaje(r3["3b. articulos en revistas indexadas - categoria a2 minciencias"] || "");
-        var p3l  = extraerPuntaje(r3["3c. libros (maximo 3 autores, ultimos 5 anios)"] || "");
-        var p3o  = extraerPuntaje(r3["3d. obras artisticas (ultimos 5 anios)"] || "");
-        var p3s  = extraerPuntaje(r3["3e. software (maximo 3 autores, ultimos 5 anios)"] || "");
-        var p3av = extraerPuntaje(r3["3f. produccion audiovisual y comunicativa (ultimos 5 anios)"] || "");
+        var p3l  = extraerPuntaje(r3["3c. libros (máximo 3 autores, últimos 5 años)"] || "");
+        var p3o  = extraerPuntaje(r3["3d. obras artísticas (últimos 5 años)"] || "");
+        var p3s  = extraerPuntaje(r3["3e. software (máximo 3 autores, últimos 5 años)"] || "");
+        var p3av = extraerPuntaje(r3["3f. producción audiovisual y comunicativa (últimos 5 años)"] || "");
         var p3   = Math.min(8, p3a1 + p3a2 + p3l + p3o + p3s + p3av);
         var tot  = Math.min(30, p1 + p2 + p3);
         puntajeF3 = tot + " / 30";
@@ -1648,7 +1649,7 @@ function construirFormulario3Acuerdo029() {
   // ── CRITERIO 2: EXPERIENCIA (max 17 pts) ──────────────────────────
   form.addPageBreakItem()
     .setTitle("CRITERIO 2 — Experiencia (Hasta 17 puntos total)")
-    .setHelpText("Suma de: Docencia (5) + Extension (8) + Profesional (2) + Cargos Admin. (2)");
+    .setHelpText("Suma de: Docencia (5) + Extensión (8) + Profesional (2) + Cargos Admin. (2)");
 
   // 2a: Docencia universitaria
   form.addSectionHeaderItem()
@@ -1657,10 +1658,10 @@ function construirFormulario3Acuerdo029() {
   v2a.setTitle("2a. Experiencia Docente");
   v2a.setHelpText("Total de años certificados en docencia universitaria (contabilizados en TCE).");
   v2a.setChoices([
-    v2a.createChoice("3 anios o menos (solo el minimo requerido) \u2192 0 puntos"),
-    v2a.createChoice("Superior a 3 y hasta 7 anios \u2192 1 punto"),
-    v2a.createChoice("Superior a 7 y hasta 11 anios \u2192 3 puntos"),
-    v2a.createChoice("Superior a 11 anios \u2192 5 puntos")
+    v2a.createChoice("3 años o menos (solo el mínimo requerido) \u2192 0 puntos"),
+    v2a.createChoice("Superior a 3 y hasta 7 años \u2192 1 punto"),
+    v2a.createChoice("Superior a 7 y hasta 11 años \u2192 3 puntos"),
+    v2a.createChoice("Superior a 11 años \u2192 5 puntos")
   ]);
   v2a.setRequired(true);
   form.addParagraphTextItem()
@@ -1669,7 +1670,7 @@ function construirFormulario3Acuerdo029() {
 
   // 2b: Extension y Desarrollo Social
   form.addSectionHeaderItem()
-    .setTitle("2b. Extension y Desarrollo Social — Hasta 8 puntos (proyectos ultimos 5 anios cerrados/liquidados)");
+    .setTitle("2b. Extensión y Desarrollo Social — Hasta 8 puntos (proyectos últimos 5 años cerrados/liquidados)");
 
   var v2bCoord = form.addMultipleChoiceItem();
   v2bCoord.setTitle("2b. Participacion como Coordinador de proyectos de Extension");
@@ -1701,18 +1702,18 @@ function construirFormulario3Acuerdo029() {
 
   form.addParagraphTextItem()
     .setTitle("Justificacion - Extension / Proyeccion")
-    .setHelpText("Liste proyectos, rol, entidad y anios.").setRequired(true);
+    .setHelpText("Liste proyectos, rol, entidad y años.").setRequired(true);
 
   // 2c: Experiencia profesional != docente
   form.addSectionHeaderItem()
     .setTitle("2c. Experiencia Profesional Diferente a Docente — Hasta 2 puntos");
   var v2c = form.addMultipleChoiceItem();
   v2c.setTitle("2c. Experiencia Profesional Diferente");
-  v2c.setHelpText("Años de experiencia profesional diferente a la docente (superior al minimo de 5 años).");
+  v2c.setHelpText("Años de experiencia profesional diferente a la docente (superior al mínimo de 5 años).");
   v2c.setChoices([
-    v2c.createChoice("5 anios o menos (solo el minimo requerido) \u2192 0 puntos"),
-    v2c.createChoice("Superior a 5 y hasta 10 anios \u2192 1 punto"),
-    v2c.createChoice("Superior a 10 anios \u2192 2 puntos")
+    v2c.createChoice("5 años o menos (solo el mínimo requerido) \u2192 0 puntos"),
+    v2c.createChoice("Superior a 5 y hasta 10 años \u2192 1 punto"),
+    v2c.createChoice("Superior a 10 años \u2192 2 puntos")
   ]);
   v2c.setRequired(true);
   form.addParagraphTextItem()
@@ -1721,15 +1722,15 @@ function construirFormulario3Acuerdo029() {
 
   // 2d: Cargos academico-administrativos
   form.addSectionHeaderItem()
-    .setTitle("2d. Experiencia en Cargos Academico-Administrativos en IES — Hasta 2 puntos");
+    .setTitle("2d. Experiencia en Cargos Académico-Administrativos en IES — Hasta 2 puntos");
   var v2d = form.addMultipleChoiceItem();
   v2d.setTitle("2d. Experiencia en Cargos Academico");
   v2d.setHelpText("Cargos de direccion o administracion academica en Instituciones de Educacion Superior.");
   v2d.setChoices([
     v2d.createChoice("Sin experiencia en cargos academico-administrativos \u2192 0 puntos"),
-    v2d.createChoice("De 1 a 4 anios en cargos academico-administrativos \u2192 0.5 puntos"),
-    v2d.createChoice("Superior a 4 y hasta 8 anios \u2192 1 punto"),
-    v2d.createChoice("Superior a 8 anios \u2192 2 puntos")
+    v2d.createChoice("De 1 a 4 años en cargos academico-administrativos \u2192 0.5 puntos"),
+    v2d.createChoice("Superior a 4 y hasta 8 años \u2192 1 punto"),
+    v2d.createChoice("Superior a 8 años \u2192 2 puntos")
   ]);
   v2d.setRequired(true);
   form.addParagraphTextItem()
@@ -1738,8 +1739,8 @@ function construirFormulario3Acuerdo029() {
 
   // ── CRITERIO 3: PRODUCTIVIDAD ACADEMICA (max 8 pts) ───────────────
   form.addPageBreakItem()
-    .setTitle("CRITERIO 3 — Productividad Academica (Hasta 8 puntos)")
-    .setHelpText("Solo publicaciones de los ULTIMOS 5 ANIOS. Libros/software: maximo 3 autores.");
+    .setTitle("CRITERIO 3 — Productividad Académica (Hasta 8 puntos)")
+    .setHelpText("Solo publicaciones de los ÚLTIMOS 5 AÑOS. Libros/software: máximo 3 autores.");
 
   // Articulos A1
   var v3a1 = form.addMultipleChoiceItem();
@@ -1771,7 +1772,7 @@ function construirFormulario3Acuerdo029() {
 
   // Libros
   var v3lib = form.addMultipleChoiceItem();
-  v3lib.setTitle("3c. Libros (maximo 3 autores, ultimos 5 anios)");
+  v3lib.setTitle("3c. Libros (máximo 3 autores, últimos 5 años)");
   v3lib.setChoices([
     v3lib.createChoice("No presenta libros \u2192 0 puntos"),
     v3lib.createChoice("1 libro \u2192 0.5 puntos"),
@@ -1781,7 +1782,7 @@ function construirFormulario3Acuerdo029() {
 
   // Obras artisticas
   var v3obr = form.addMultipleChoiceItem();
-  v3obr.setTitle("3d. Obras Artisticas (ultimos 5 anios)");
+  v3obr.setTitle("3d. Obras Artísticas (últimos 5 años)");
   v3obr.setChoices([
     v3obr.createChoice("No presenta obras artisticas \u2192 0 puntos"),
     v3obr.createChoice("1 obra \u2192 0.5 puntos"),
@@ -1791,7 +1792,7 @@ function construirFormulario3Acuerdo029() {
 
   // Software
   var v3sof = form.addMultipleChoiceItem();
-  v3sof.setTitle("3e. Software (maximo 3 autores, ultimos 5 anios)");
+  v3sof.setTitle("3e. Software (máximo 3 autores, últimos 5 años)");
   v3sof.setChoices([
     v3sof.createChoice("No presenta software \u2192 0 puntos"),
     v3sof.createChoice("1 software \u2192 0.5 puntos"),
@@ -1801,7 +1802,7 @@ function construirFormulario3Acuerdo029() {
 
   // Produccion audiovisual
   var v3aud = form.addMultipleChoiceItem();
-  v3aud.setTitle("3f. Produccion Audiovisual y Comunicativa (ultimos 5 anios)");
+  v3aud.setTitle("3f. Producción Audiovisual y Comunicativa (últimos 5 años)");
   v3aud.setChoices([
     v3aud.createChoice("No presenta produccion audiovisual \u2192 0 puntos"),
     v3aud.createChoice("1 produccion audiovisual \u2192 0.5 puntos"),
