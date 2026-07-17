@@ -141,9 +141,20 @@ function getFilaDatos(hojaName) {
   var enc  = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
   var fila = hoja.getRange(ult, 1, 1, hoja.getLastColumn()).getValues()[0];
 
+  function normalizar(texto) {
+    return String(texto || "")
+      .toLowerCase()
+      .trim()
+      .replace(/ñ/g, 'n')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
   function safe(key) {
+    var kNorm = normalizar(key);
     for (var i = 0; i < enc.length; i++) {
-      if (String(enc[i]).toLowerCase().indexOf(key.toLowerCase()) !== -1) {
+      var hNorm = normalizar(enc[i]);
+      if (hNorm.indexOf(kNorm) !== -1) {
         return String(fila[i] || "").trim();
       }
     }
@@ -151,8 +162,10 @@ function getFilaDatos(hojaName) {
   }
 
   function getColIndex(key) {
+    var kNorm = normalizar(key);
     for (var i = 0; i < enc.length; i++) {
-      if (String(enc[i]).toLowerCase().indexOf(key.toLowerCase()) !== -1) {
+      var hNorm = normalizar(enc[i]);
+      if (hNorm.indexOf(kNorm) !== -1) {
         return i + 1;
       }
     }
