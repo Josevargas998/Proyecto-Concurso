@@ -39,6 +39,97 @@ var GLOBAL_PROG_FACULTAD = {
   "administracion de negocios":          "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS"
 };
 
+// =====================================================================
+// SEMAFORO DE COLORES POR FACULTADES (ESTANTERIA FISICA & DIGITAL)
+// =====================================================================
+var SEMAFORO_FACULTAD = {
+  "FACULTAD DE CIENCIAS DE LA EDUCACION": {
+    sheetBg: "#d8f3dc",      // Verde Claro Pastel
+    headerBg: "#2d6a4f",     // Verde Oscuro
+    headerMedBg: "#52796f",  // Verde Medio
+    text: "VERDE"
+  },
+  "FACULTAD DE INGENIERIA": {
+    sheetBg: "#caf0f8",      // Azul Claro Pastel
+    headerBg: "#0077b6",     // Azul Oscuro
+    headerMedBg: "#0096c7",  // Azul Medio
+    text: "AZUL"
+  },
+  "FACULTAD DE CIENCIAS DE LA SALUD": {
+    sheetBg: "#ffccd5",      // Rojo/Rosa Claro Pastel
+    headerBg: "#c9184a",     // Rojo Oscuro
+    headerMedBg: "#ff4d6d",  // Rojo/Rosa Fuerte
+    text: "ROJO"
+  },
+  "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES": {
+    sheetBg: "#ffe5ec",      // Naranja/Salmón Suave Pastel
+    headerBg: "#ff7096",     // Rosa/Naranja Fuerte
+    headerMedBg: "#ff85a1",  // Naranja Medio
+    text: "NARANJA"
+  },
+  "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS": {
+    sheetBg: "#e8dbfc",      // Morado/Lila Claro Pastel
+    headerBg: "#7209b7",     // Morado Fuerte
+    headerMedBg: "#b5179e",  // Morado/Magenta Medio
+    text: "MORADO"
+  },
+  "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS": {
+    sheetBg: "#fefae0",      // Amarillo Crema Pastel
+    headerBg: "#d4a373",     // Cafe/Ocre Claro
+    headerMedBg: "#e9c46a",  // Amarillo/Dorado
+    text: "AMARILLO"
+  }
+};
+
+// Obtiene los datos del semáforo según el programa de concurso
+function obtenerSemaforoPrograma(nombrePrograma) {
+  var pLow = (nombrePrograma || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  var fac = "";
+  for (var clave in GLOBAL_PROG_FACULTAD) {
+    if (pLow.indexOf(clave) >= 0) {
+      fac = GLOBAL_PROG_FACULTAD[clave];
+      break;
+    }
+  }
+  
+  // Color por defecto en caso de no encontrarse
+  var semaforoDefecto = {
+    sheetBg: "#f1f3f4",      // Gris Claro
+    headerBg: "#4a4a4a",     // Gris Oscuro
+    headerMedBg: "#7a7a7a",  // Gris Medio
+    text: "GRIS"
+  };
+
+  if (fac && SEMAFORO_FACULTAD[fac]) {
+    var config = SEMAFORO_FACULTAD[fac];
+    return {
+      facultad: fac,
+      sheetBg: config.sheetBg,
+      headerBg: config.headerBg,
+      headerMedBg: config.headerMedBg,
+      colorFisico: config.text
+    };
+  }
+  
+  return {
+    facultad: fac || nombrePrograma || "DESCONOCIDA",
+    sheetBg: semaforoDefecto.sheetBg,
+    headerBg: semaforoDefecto.headerBg,
+    headerMedBg: semaforoDefecto.headerMedBg,
+    colorFisico: semaforoDefecto.text
+  };
+}
+
+// Colorea una fila del registro para la visualización del semáforo
+function colorearFila(hoja, filaNum, colorHex) {
+  try {
+    var rng = hoja.getRange(filaNum, 1, 1, hoja.getLastColumn());
+    rng.setBackground(colorHex);
+  } catch(e) {
+    Logger.log("Error coloreando fila: " + e);
+  }
+}
+
 
 // =====================================================================
 // FUNCIONES AUXILIARES
@@ -277,6 +368,17 @@ function onFormSubmit_F2(e) {
       d.hoja.getRange(d.ult, colLinkF3).setValue("N/A - No cumple requisitos habilitantes");
     }
 
+    // ── 6. SEMÁFORO: COLOREAR FILA Y REGISTRAR COLOR FÍSICO ──
+    var semInfo = obtenerSemaforoPrograma(prog);
+    colorearFila(d.hoja, d.ult, semInfo.sheetBg);
+    
+    var colColorEstante = d.getColIndex("Color Estante");
+    if (colColorEstante === -1) {
+      colColorEstante = d.hoja.getLastColumn() + 1;
+      d.hoja.getRange(1, colColorEstante).setValue("Color Estante");
+    }
+    d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
+
   } catch(err) { Logger.log("Error F2: " + err); }
 }
 
@@ -342,11 +444,18 @@ function onFormSubmit_F3(e) {
     var just2c  = d.safe("Justificacion - Experiencia Profesional");
     var just2d  = d.safe("Justificacion - Cargos Academico Administrativos");
 
-    // Facultad
-    var fac = "";
-    var pn = (prog || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    for (var kf in GLOBAL_PROG_FACULTAD) { if (pn.indexOf(kf) >= 0) { fac = GLOBAL_PROG_FACULTAD[kf]; break; } }
-    if (!fac) fac = prog;
+    // Facultad & Semáforo
+    var semInfo = obtenerSemaforoPrograma(prog);
+    var fac = semInfo.facultad;
+    
+    // Colorear fila de respuestas y registrar color estante en Sheet
+    colorearFila(d.hoja, d.ult, semInfo.sheetBg);
+    var colColorEstante = d.getColIndex("Color Estante");
+    if (colColorEstante === -1) {
+      colColorEstante = d.hoja.getLastColumn() + 1;
+      d.hoja.getRange(1, colColorEstante).setValue("Color Estante");
+    }
+    d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
 
     // ── CREAR SPREADSHEET ─────────────────────────────────────────────
     var ss = SpreadsheetApp.create("ETAPA3_" + cedula + "_" + nombre.substring(0, 25));
@@ -357,10 +466,18 @@ function onFormSubmit_F3(e) {
     ws.setColumnWidth(3, 175);
     ws.setColumnWidth(4, 125);
 
-    var CD = "#1e3a2f"; var CM = "#2d6a4f"; var CL = "#52796f";
-    var CS = "#b7e1cd"; var CSel = "#d8f3dc"; var CTot = "#f6bd60";
-    var CW = "#ffffff"; var CGr = "#f1f3f4"; var CN = "#e8f5e9";
-    var TW = "#ffffff"; var TD = "#1a1a1a";
+    // Semáforo dinámico en el Excel
+    var CD = semInfo.headerBg;      // Cabecera Principal (Color Oscuro de la Facultad)
+    var CM = semInfo.headerMedBg;   // Cabecera de Secciones
+    var CL = semInfo.headerMedBg;   // Cabecera de Criterios
+    var CS = semInfo.sheetBg;       // Subtotales (Color Pastel de la Facultad)
+    var CSel = semInfo.sheetBg;     // Selección (Color Pastel de la Facultad)
+    var CTot = "#f6bd60";           // Color Naranja/Oro para el total
+    var CW = "#ffffff"; 
+    var CGr = "#f8f9fa"; 
+    var CN = "#f4f6f8";             // Nota (Gris muy suave neutro)
+    var TW = "#ffffff"; 
+    var TD = "#1a1a1a";
     var row = 1;
 
     function sc(r, c, val, bg, fg, bold, sz, hal) {
@@ -565,11 +682,25 @@ function onFormSubmit_F4(e) {
     var d = getFilaDatos("Respuestas de formulario 4");
     var cedula = d.safe("Cedula de Ciudadania");
     var nombre = d.safe("Nombre Completo");
+    var prog   = d.safe("Programa Academico");
+    
     var colEnlace = d.getColIndex("Enlace Documento");
     if (colEnlace === -1) { colEnlace = d.enc.length + 1; d.hoja.getRange(1, colEnlace).setValue("Enlace Documento"); }
 
+    // ── SEMÁFORO: COLOREAR FILA Y REGISTRAR COLOR FÍSICO ──
+    var semInfo = obtenerSemaforoPrograma(prog);
+    colorearFila(d.hoja, d.ult, semInfo.sheetBg);
+    
+    var colColorEstante = d.getColIndex("Color Estante");
+    if (colColorEstante === -1) {
+      colColorEstante = d.hoja.getLastColumn() + 1;
+      d.hoja.getRange(1, colColorEstante).setValue("Color Estante");
+    }
+    d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
+
     var doc  = DocumentApp.create("ETAPA4_" + cedula + "_" + nombre.substring(0, 30));
     var body = doc.getBody();
+
 
     function addCenterBold(t, sz) {
       var p = body.appendParagraph(t);
