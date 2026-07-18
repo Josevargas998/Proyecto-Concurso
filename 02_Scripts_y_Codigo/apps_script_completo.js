@@ -2,7 +2,7 @@
 // VARIABLES GLOBALES
 // =====================================================================
 var SS_ID        = "1fXU5t9fmDfXwskFs42r1eZNZa0KCxNo1Li77yrDpyvY";
-var TPL_FORM2_ID = "1CzMo2cRbfQqFXWphJAzV7VdbmxYXMpZqOB2FZq9VZS8"; // Plantilla Lista de Chequeo (formato plantilla.docx convertido)
+var TPL_FORM2_ID = "1zMog_h7OCTm5thWbjCFP6J5D6fiWh9RJL9NHQHl29Mo"; // Plantilla Lista de Chequeo original con logos
 var TPL_FORM3_ID = "1AsZXFF6IC4Ue5FNeGmfRTVk3-qAvGABxGw-hEgkmscM"; // Plantilla Hoja de Calificacion
 
 var FORM_IDS = {
@@ -258,14 +258,23 @@ function onFormSubmit_F2(e) {
     var copyDoc = DocumentApp.openById(copia.getId());
     var body    = copyDoc.getBody();
 
-    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO CON PLACEHOLDERS ───────────
-    // La plantilla tiene: {NOMBRE}, {CC}, {FACULTAD}, {PROGRAMA}, {PERFIL}
-    // replaceText reemplaza SOLO el texto buscado, preservando logos, imagenes y formato del doc.
-    body.replaceText("\\{NOMBRE\\}", nombre.toUpperCase());
-    body.replaceText("\\{CC\\}",     cedula);
-    body.replaceText("\\{FACULTAD\\}", fac.toUpperCase());
-    body.replaceText("\\{PROGRAMA\\}", prg.toUpperCase());
-    body.replaceText("\\{PERFIL\\}",   perfil.toUpperCase());
+    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
+    var paras = body.getParagraphs();
+    for (var p = 0; p < paras.length; p++) {
+      var txt = paras[p].getText();
+      var low = txt.toLowerCase();
+
+      if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
+        paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
+                          "                                         C.C. " + cedula);
+      } else if (low.indexOf("facultad de") >= 0) {
+        paras[p].setText("FACULTAD DE: " + fac.toUpperCase());
+      } else if (low.indexOf("programa:") >= 0) {
+        paras[p].setText("PROGRAMA: " + prg.toUpperCase());
+      } else if (low.indexOf("area") >= 0 || low.indexOf("perfl") >= 0 || low.indexOf("perfil") >= 0) {
+        paras[p].setText("ÁREA O PERFIL: " + perfil.toUpperCase());
+      }
+    }
 
     // Reemplazar linea de observaciones generales (linea de guiones bajos)
     if (obsGen && obsGen.length > 0) {
