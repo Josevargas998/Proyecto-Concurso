@@ -261,17 +261,20 @@ function onFormSubmit_F2(e) {
     // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
     var paras = body.getParagraphs();
     for (var p = 0; p < paras.length; p++) {
-      var txt = paras[p].getText();
+      var txt = paras[p].getText().trim();
       var low = txt.toLowerCase();
 
-      if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
+      // Detener la busqueda despues de los primeros 15 parrafos para no tocar las tablas de requisitos
+      if (p > 15) break;
+
+      if (low.indexOf("nombre:") === 0) {
         paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
                           "                                         C.C. " + cedula);
-      } else if (low.indexOf("facultad de") >= 0) {
+      } else if (low.indexOf("facultad de") === 0) {
         paras[p].setText("FACULTAD DE: " + fac.toUpperCase());
-      } else if (low.indexOf("programa:") >= 0) {
+      } else if (low.indexOf("programa:") === 0) {
         paras[p].setText("PROGRAMA: " + prg.toUpperCase());
-      } else if (low.indexOf("area") >= 0 || low.indexOf("perfl") >= 0 || low.indexOf("perfil") >= 0) {
+      } else if (low.indexOf("área o perfil") === 0 || low.indexOf("area o perfil") === 0 || low.indexOf("área o perfl") === 0 || low.indexOf("area o perfl") === 0) {
         paras[p].setText("ÁREA O PERFIL: " + perfil.toUpperCase());
       }
     }
