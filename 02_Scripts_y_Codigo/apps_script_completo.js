@@ -1305,12 +1305,158 @@ function actualizarHojaResumen() {
     resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(semFila.sheetBg);
     resumen.getRange(r + 3, 7).setFontWeight("bold").setHorizontalAlignment("center");
   }
-
   // Bordes
   resumen.getRange(2, 1, filas.length + 1, encabezados.length)
     .setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
 
-  SpreadsheetApp.getUi().alert("📊 Hoja Resumen actualizada con " + filas.length + " candidato(s).");
+  // ── Generar el Dashboard Nivel Rectoría ───────────────────────
+  try {
+    crearDashboardNativo();
+  } catch(exDash) {
+    Logger.log("Error al crear Dashboard: " + exDash);
+  }
+
+  SpreadsheetApp.getUi().alert("📊 Hoja Resumen y Dashboard actualizados con " + filas.length + " candidato(s).");
+}
+
+// =====================================================================
+// CREAR DASHBOARD NATIVO: Diseña la hoja visual "DASHBOARD" con gráficos
+// =====================================================================
+function crearDashboardNativo() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  
+  // Obtener o crear pestaña DASHBOARD
+  var dashboard = ss.getSheetByName("DASHBOARD");
+  if (!dashboard) {
+    dashboard = ss.insertSheet("DASHBOARD");
+    ss.setActiveSheet(dashboard);
+    ss.moveActiveSheet(1); // Ponerla de primera
+  }
+  
+  // Limpieza inicial total
+  dashboard.clear();
+  dashboard.clearFormats();
+  var charts = dashboard.getCharts();
+  for (var i = 0; i < charts.length; i++) {
+    dashboard.removeChart(charts[i]);
+  }
+  
+  // Mostrar líneas de cuadrícula temporalmente para aplicar bordes y luego ocultar para estética limpia
+  dashboard.setHideGridlines(true);
+  
+  // Obtener estadísticas
+  var stats = generarEstadisticasPublicas();
+  
+  // Colores corporativos UQ
+  var HDARK = "#003366"; // Azul
+  var TW    = "#ffffff";
+  var GOLD  = "#C9A227"; // Dorado
+  
+  // ── 1. TÍTULO PRINCIPAL (Filas 1 y 2) ─────────────────────────────
+  dashboard.getRange("A1:J1").merge()
+    .setValue("CONCURSO PÚBLICO DE MÉRITOS DOCENTE DE CARRERA 2026")
+    .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(14)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  dashboard.setRowHeight(1, 40);
+  
+  dashboard.getRange("A2:J2").merge()
+    .setValue("ESTADÍSTICAS Y PANEL DE CONTROL RECTORÍA — Actualizado: " + stats.actualizado)
+    .setBackground("#f1f5f9").setFontColor("#334155").setFontWeight("bold").setFontSize(9)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  dashboard.setRowHeight(2, 22);
+
+  // ── 2. TARJETAS DE INDICADORES (Cards - Filas 4 y 5) ───────────────
+  var cardsDef = [
+    { rangeTitle: "A4:B4", rangeVal: "A5:B5", title: "TOTAL CANDIDATOS", val: stats.total_candidatos, bg: "#f8fafc", tc: "#64748b", vc: HDARK, border: "#cbd5e1" },
+    { rangeTitle: "C4:D4", rangeVal: "C5:D5", title: "HABILITADOS (CUMPLE)", val: stats.f2_estado.cumple, bg: "#f0fdf4", tc: "#166534", vc: "#15803d", border: "#bbf7d0" },
+    { rangeTitle: "E4:F4", rangeVal: "E5:F5", title: "NO HABILITADOS", val: stats.f2_estado.no_cumple, bg: "#fef2f2", tc: "#991b1b", vc: "#b91c1c", border: "#fecaca" },
+    { rangeTitle: "G4:H4", rangeVal: "G5:H5", title: "EN CALIFICACIÓN (F3)", val: stats.etapas.f3, bg: "#eff6ff", tc: "#1e3a8a", vc: "#1d4ed8", border: "#bfdbfe" },
+    { rangeTitle: "I4:J4", rangeVal: "I5:J5", title: "FICHA INGRESO (F4)", val: stats.etapas.f4, bg: "#faf5ff", tc: "#581c87", vc: "#7e22ce", border: "#e9d5ff" }
+  ];
+
+  dashboard.setRowHeight(4, 20);
+  dashboard.setRowHeight(5, 34);
+
+  cardsDef.forEach(function(c) {
+    dashboard.getRange(c.rangeTitle).merge()
+      .setValue(c.title).setBackground(c.bg).setFontColor(c.tc).setFontWeight("bold").setFontSize(8)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+      
+    dashboard.getRange(c.rangeVal).merge()
+      .setValue(c.val).setBackground(c.bg).setFontColor(c.vc).setFontWeight("bold").setFontSize(20)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+
+    // Bordes de la tarjeta
+    var cells = c.rangeTitle.split(":")[0] + ":" + c.rangeVal.split(":")[1];
+    dashboard.getRange(cells).setBorder(true, true, true, true, true, true, c.border, SpreadsheetApp.BorderStyle.SOLID);
+  });
+
+  // ── 3. DATOS DE ORIGEN PARA GRÁFICOS (Columnas K y N - Ocultas) ────
+  // Tabla Cumple vs No Cumple (K4:L6)
+  dashboard.getRange("K4").setValue("Estado");
+  dashboard.getRange("L4").setValue("Cantidad");
+  dashboard.getRange("K5").setValue("Habilitados (Cumplen)");
+  dashboard.getRange("L5").setValue(stats.f2_estado.cumple);
+  dashboard.getRange("K6").setValue("No Habilitados");
+  dashboard.getRange("L6").setValue(stats.f2_estado.no_cumple);
+  
+  // Tabla Facultades (N4:O...)
+  dashboard.getRange("N4").setValue("Facultad");
+  dashboard.getRange("O4").setValue("Candidatos");
+  var totalFacultades = stats.por_facultad.length;
+  if (totalFacultades === 0) {
+    dashboard.getRange("N5").setValue("Sin registros");
+    dashboard.getRange("O5").setValue(0);
+    totalFacultades = 1;
+  } else {
+    for (var f = 0; f < totalFacultades; f++) {
+      dashboard.getRange(5 + f, 14).setValue(stats.por_facultad[f].facultad);
+      dashboard.getRange(5 + f, 15).setValue(stats.por_facultad[f].count);
+    }
+  }
+
+  // Dar formato rápido a las tablas auxiliares
+  dashboard.getRange("K4:L4").setBackground(HDARK).setFontColor(TW).setFontWeight("bold");
+  dashboard.getRange("K4:L6").setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
+  
+  var RangoFac = "N4:O" + (4 + totalFacultades);
+  dashboard.getRange("N4:O4").setBackground(HDARK).setFontColor(TW).setFontWeight("bold");
+  dashboard.getRange(RangoFac).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
+
+  // ── 4. INSERTAR Y CONFIGURAR GRÁFICOS ──────────────────────────────
+  // Gráfico Circular (Cumplimiento)
+  var pieChart = dashboard.newChart()
+    .asPieChart()
+    .setOption('title', 'Candidatos Habilitados (Etapa 2)')
+    .setOption('pieHole', 0.4) // Efecto dona
+    .setOption('colors', ['#22c55e', '#ef4444']) // Verde y Rojo
+    .setOption('legend', { position: 'bottom', textStyle: { fontSize: 9 } })
+    .setOption('chartArea', { left: 15, top: 40, width: '90%', height: '70%' })
+    .addRange(dashboard.getRange("K4:L6"))
+    .setPosition(7, 1, 10, 10) // Fila 7, Columna A (1)
+    .setWidth(370)
+    .setHeight(280)
+    .build();
+  dashboard.insertChart(pieChart);
+
+  // Gráfico de Barras (Candidatos por Facultad)
+  var barChart = dashboard.newChart()
+    .asBarChart()
+    .setOption('title', 'Candidatos Postulados por Facultad')
+    .setOption('colors', [GOLD])
+    .setOption('legend', { position: 'none' })
+    .setOption('chartArea', { left: 90, top: 40, width: '80%', height: '70%' })
+    .addRange(dashboard.getRange(RangoFac))
+    .setPosition(7, 5, 10, 10) // Fila 7, Columna E (5)
+    .setWidth(450)
+    .setHeight(280)
+    .build();
+  dashboard.insertChart(barChart);
+
+  // ── 5. OCULTAR DATOS TÉCNICOS DE LOS GRÁFICOS (Columnas K a P) ───
+  // Esto hace que el usuario y el rector solo vean el dashboard elegante, sin ver las tablas de apoyo.
+  dashboard.showColumns(11, 6); // Asegurar que existen
+  dashboard.hideColumns(11, 6); // Ocultar columnas K, L, M, N, O, P
 }
 
 
