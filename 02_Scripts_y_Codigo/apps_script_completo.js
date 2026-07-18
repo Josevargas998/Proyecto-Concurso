@@ -1399,10 +1399,12 @@ function crearDashboardNativo() {
     .setHorizontalAlignment("center");
   dashboard.setRowHeight(7, 18);
 
-  // --- SPARKLINE PIE (Spanish Locale) ---
+  // --- SPARKLINE BAR: Habilitados vs No Habilitados (Spanish Locale) ---
+  var totalH = cumple + noCumple || 1;
   var pieFormula = '=SPARKLINE({' + cumple + '\\' + noCumple + '}; ' +
-    '{"charttype"\\"pie";"color1"\\"#22c55e";"color2"\\"#ef4444"})';
-  dashboard.getRange("A8:E18").merge().setFormula(pieFormula);
+    '{"charttype"\\"bar";"color1"\\"#22c55e";"color2"\\"#ef4444";"max"\\' + totalH + '})';
+  // Centrar verticalmente el grafico de proporcion haciendo que ocupe una fila mas delgada para mayor elegancia
+  dashboard.getRange("A11:E12").merge().setFormula(pieFormula);
   for (var r = 8; r <= 18; r++) dashboard.setRowHeight(r, 24);
 
   // Leyenda del pie
