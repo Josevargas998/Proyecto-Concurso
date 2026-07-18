@@ -2467,3 +2467,238 @@ function debugForm3() {
     Logger.log("Row " + i + ": " + data[i].join(" | "));
   }
 }
+
+
+// =====================================================================
+// FUNCION DE TEST: Genera candidatos de prueba en todos los formularios
+// =====================================================================
+function generarDatosDePrueba() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  
+  // Limpiar datos anteriores (dejar cabeceras)
+  var hojas = [
+    "Respuestas de formulario 1",
+    "Respuestas de formulario 2",
+    "Respuestas de formulario 3",
+    "Respuestas de formulario 4"
+  ];
+  
+  hojas.forEach(function(nom) {
+    var sh = ss.getSheetByName(nom);
+    if (sh && sh.getLastRow() >= 2) {
+      sh.deleteRows(2, sh.getLastRow() - 1);
+    }
+  });
+
+  // Helper para insertar por mapeo inteligente de cabeceras
+  function insertarFilaMapeada(hojaName, datos) {
+    var sh = ss.getSheetByName(hojaName);
+    if (!sh) return;
+    var cols = sh.getLastColumn();
+    if (cols < 1) return;
+    var headers = sh.getRange(1, 1, 1, cols).getValues()[0];
+    var fila = new Array(headers.length).fill("");
+    
+    function norm(txt) {
+      return String(txt || "").toLowerCase().trim()
+        .replace(/ñ/g, 'n').normalize("NFD").replace(/[̀-ͯ]/g, "");
+    }
+    
+    for (var key in datos) {
+      var kNorm = norm(key);
+      for (var i = 0; i < headers.length; i++) {
+        var hNorm = norm(headers[i]);
+        if (hNorm === kNorm || (kNorm.length > 3 && hNorm.indexOf(kNorm) >= 0) || (hNorm.length > 3 && kNorm.indexOf(hNorm) >= 0)) {
+          fila[i] = datos[key];
+        }
+      }
+    }
+    sh.appendRow(fila);
+  }
+
+  // Candidatos a generar (uno por facultad)
+  var listaTest = [
+    {
+      cedula: "10001",
+      nombre: "Pedro Perez (Educacion)",
+      programa: "Licenciatura en Educacion Fisica, Recreacion y Deportes",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Maestria adicional a la requerida → 3 puntos",
+      f3ExpDoc: "Superior a 3 y hasta 7 años → 1 punto",
+      f3ProyC: "Entre 1 y 10 proyectos como coordinador → 2 puntos",
+      f3ProyF: "Entre 200 y 400 horas como facilitador → 1 punto",
+      f3ProyL: "Entre 1 y 10 proyectos por labor → 1 punto",
+      f3ExpProf: "Superior a 5 y hasta 10 años → 1 punto",
+      f3Cargos: "De 1 a 4 años en cargos academico-administrativos → 0.5 puntos",
+      f3ArtA1: "1 a 2 articulos A1 → 0.5 puntos",
+      f3ArtA2: "3 articulos A2 → 1 punto",
+      f3Libros: "1 libro → 0.5 puntos",
+      f3Obras: "1 obra → 0.5 puntos",
+      f3Soft: "1 software → 0.5 puntos",
+      f3Audio: "1 produccion audiovisual → 0.5 puntos",
+      evaluador: "Decano Educacion"
+    },
+    {
+      cedula: "10002",
+      nombre: "Maria Gomez (Ingenieria)",
+      programa: "Ingenieria Civil",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Doctorado adicional al requerido → 5 puntos",
+      f3ExpDoc: "Superior a 11 años → 5 puntos",
+      f3ProyC: "Sin participacion como coordinador → 0 puntos",
+      f3ProyF: "Sin participacion como facilitador → 0 puntos",
+      f3ProyL: "Sin participacion por labor → 0 puntos",
+      f3ExpProf: "Superior a 10 años → 2 puntos",
+      f3Cargos: "Superior a 8 años → 2 puntos",
+      f3ArtA1: "5 o mas articulos A1 → 2 puntos",
+      f3ArtA2: "5 o mas articulos A2 → 2 puntos",
+      f3Libros: "2 o mas libros → 1 punto",
+      f3Obras: "2 o mas obras → 1 punto",
+      f3Soft: "2 o mas software → 1 punto",
+      f3Audio: "2 o mas producciones audiovisuales → 1 punto",
+      evaluador: "Decano Ingenieria"
+    },
+    {
+      cedula: "10003",
+      nombre: "Carlos Rodriguez (Salud)",
+      programa: "Enfermeria",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Sin titulo adicional al requerido → 0 puntos",
+      f3ExpDoc: "3 años o menos (solo el mínimo requerido) → 0 puntos",
+      f3ProyC: "Sin participacion como coordinador → 0 puntos",
+      f3ProyF: "Sin participacion como facilitador → 0 puntos",
+      f3ProyL: "Sin participacion por labor → 0 puntos",
+      f3ExpProf: "5 años o menos (solo el mínimo requerido) → 0 puntos",
+      f3Cargos: "Sin experiencia en cargos academico-administrativos → 0 puntos",
+      f3ArtA1: "No presenta articulos A1 → 0 puntos",
+      f3ArtA2: "No presenta articulos A2 → 0 puntos",
+      f3Libros: "No presenta libros → 0 puntos",
+      f3Obras: "No presenta obras artisticas → 0 puntos",
+      f3Soft: "No presenta software → 0 puntos",
+      f3Audio: "No presenta produccion audiovisual → 0 puntos",
+      evaluador: "Decano Salud"
+    },
+    {
+      cedula: "10004",
+      nombre: "Ana Martinez (Humanas)",
+      programa: "Trabajo Social",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Maestria adicional a la requerida → 3 puntos",
+      f3ExpDoc: "Superior a 3 y hasta 7 años → 1 punto",
+      f3ProyC: "Entre 1 y 10 proyectos como coordinador → 2 puntos",
+      f3ProyF: "Entre 200 y 400 horas como facilitador → 1 punto",
+      f3ProyL: "Entre 1 y 10 proyectos por labor → 1 punto",
+      f3ExpProf: "Superior a 5 y hasta 10 años → 1 punto",
+      f3Cargos: "De 1 a 4 años en cargos academico-administrativos → 0.5 puntos",
+      f3ArtA1: "1 a 2 articulos A1 → 0.5 puntos",
+      f3ArtA2: "3 articulos A2 → 1 punto",
+      f3Libros: "1 libro → 0.5 puntos",
+      f3Obras: "1 obra → 0.5 puntos",
+      f3Soft: "1 software → 0.5 puntos",
+      f3Audio: "1 produccion audiovisual → 0.5 puntos",
+      evaluador: "Decano Humanas"
+    },
+    {
+      cedula: "10005",
+      nombre: "Juan Lopez (Basicas)",
+      programa: "Biologia",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Doctorado adicional al requerido → 5 puntos",
+      f3ExpDoc: "Superior a 11 años → 5 puntos",
+      f3ProyC: "Sin participacion como coordinador → 0 puntos",
+      f3ProyF: "Sin participacion como facilitador → 0 puntos",
+      f3ProyL: "Sin participacion por labor → 0 puntos",
+      f3ExpProf: "Superior a 10 años → 2 puntos",
+      f3Cargos: "Superior a 8 años → 2 puntos",
+      f3ArtA1: "5 o mas articulos A1 → 2 puntos",
+      f3ArtA2: "5 o mas articulos A2 → 2 puntos",
+      f3Libros: "2 o mas libros → 1 punto",
+      f3Obras: "2 o mas obras → 1 punto",
+      f3Soft: "2 o mas software → 1 punto",
+      f3Audio: "2 o mas producciones audiovisuales → 1 punto",
+      evaluador: "Decano Basicas"
+    },
+    {
+      cedula: "10006",
+      nombre: "Lucia Fernandez (Economicas)",
+      programa: "Administracion Financiera",
+      perfil: "Perfil 1",
+      f2Concepto: "CUMPLE CON TODOS LOS REQUISITOS",
+      f3Nivel: "Maestria adicional a la requerida → 3 puntos",
+      f3ExpDoc: "Superior a 3 y hasta 7 años → 1 punto",
+      f3ProyC: "Entre 1 y 10 proyectos como coordinador → 2 puntos",
+      f3ProyF: "Entre 200 y 400 horas como facilitador → 1 punto",
+      f3ProyL: "Entre 1 y 10 proyectos por labor → 1 punto",
+      f3ExpProf: "Superior a 5 y hasta 10 años → 1 punto",
+      f3Cargos: "De 1 a 4 años en cargos academico-administrativos → 0.5 puntos",
+      f3ArtA1: "1 a 2 articulos A1 → 0.5 puntos",
+      f3ArtA2: "3 articulos A2 → 1 punto",
+      f3Libros: "1 libro → 0.5 puntos",
+      f3Obras: "1 obra → 0.5 puntos",
+      f3Soft: "1 software → 0.5 puntos",
+      f3Audio: "1 produccion audiovisual → 0.5 puntos",
+      evaluador: "Decano Economicas"
+    }
+  ];
+
+  // Insertar cada candidato
+  listaTest.forEach(function(cand) {
+    var tsStr = Utilities.formatDate(new Date(), "America/Bogota", "dd/MM/yyyy HH:mm:ss");
+    
+    // F1
+    insertarFilaMapeada("Respuestas de formulario 1", {
+      "Marca temporal": tsStr,
+      "Cedula de Ciudadania": cand.cedula,
+      "Nombre Completo": cand.nombre,
+      "Programa Academico": cand.programa,
+      "Perfil del Cargo": cand.perfil
+    });
+    
+    // F2
+    insertarFilaMapeada("Respuestas de formulario 2", {
+      "Marca temporal": tsStr,
+      "Cedula del Candidato": cand.cedula,
+      "Nombre Completo": cand.nombre,
+      "Programa / Area": cand.programa,
+      "Perfil del Cargo": cand.perfil,
+      "Concepto Final": cand.f2Concepto
+    });
+    
+    // F3
+    insertarFilaMapeada("Respuestas de formulario 3", {
+      "Marca temporal": tsStr,
+      "Cedula del Candidato": cand.cedula,
+      "Nombre Completo": cand.nombre,
+      "Programa / Area": cand.programa,
+      "Perfil del Cargo": cand.perfil,
+      "Nombre del Evaluador": cand.evaluador,
+      "Nivel Academico Acreditado": cand.f3Nivel,
+      "2a. Experiencia Docente": cand.f3ExpDoc,
+      "2b. Participacion como Coordinador": cand.f3ProyC,
+      "2b. Participacion como Facilitador": cand.f3ProyF,
+      "2b. Participacion por labor": cand.f3ProyL,
+      "2c. Experiencia Profesional Diferente": cand.f3ExpProf,
+      "2d. Experiencia en Cargos Academico": cand.f3Cargos,
+      "3a. Articulos en Revistas Indexadas - Categoria A1": cand.f3ArtA1,
+      "3b. Articulos en Revistas Indexadas - Categoria A2": cand.f3ArtA2,
+      "3c. Libros": cand.f3Libros,
+      "3d. Obras": cand.f3Obras,
+      "3e. Software": cand.f3Soft,
+      "3f. Produccion": cand.f3Audio,
+      "Observaciones Generales": "Candidato de prueba generado por el script de test.",
+      "Justificacion": "Validación automática de prueba."
+    });
+  });
+
+  SpreadsheetApp.flush();
+  
+  // Actualizar resumen y dashboard al finalizar
+  actualizarHojaResumen();
+  
+  safeAlert("🚀 Datos de prueba cargados con éxito: 6 candidatos insertados (uno por cada facultad). El Dashboard y Resumen se han actualizado.");
+}
