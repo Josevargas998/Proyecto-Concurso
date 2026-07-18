@@ -1086,7 +1086,7 @@ function actualizarHojaResumen() {
   // ── Encabezado ────────────────────────────────────────────────────
   var HDARK = "#1a1a2e"; var HMED = "#16213e"; var TW = "#ffffff";
   var encabezados = [
-    "Fecha Ingreso", "Cedula", "Nombre Completo", "Programa / Area", "Facultad", "Color Estante",
+    "Fecha Ingreso", "Cedula", "Nombre Completo", "Programa / Area", "Perfil", "Facultad", "Color Estante",
     "F1 Registro", "F2 Estado", "F2 Doc. Lista Chequeo",
     "F3 Puntaje HV", "F3 Doc. Calificacion",
     "F4 Ficha Ingreso"
@@ -1096,14 +1096,15 @@ function actualizarHojaResumen() {
   resumen.setColumnWidth(2, 110);
   resumen.setColumnWidth(3, 200);
   resumen.setColumnWidth(4, 200);
-  resumen.setColumnWidth(5, 220);
-  resumen.setColumnWidth(6, 100);
-  resumen.setColumnWidth(7, 120);
-  resumen.setColumnWidth(8, 140);
-  resumen.setColumnWidth(9, 160);
-  resumen.setColumnWidth(10, 110);
-  resumen.setColumnWidth(11, 160);
-  resumen.setColumnWidth(12, 140);
+  resumen.setColumnWidth(5, 180);
+  resumen.setColumnWidth(6, 220);
+  resumen.setColumnWidth(7, 100);
+  resumen.setColumnWidth(8, 120);
+  resumen.setColumnWidth(9, 140);
+  resumen.setColumnWidth(10, 160);
+  resumen.setColumnWidth(11, 110);
+  resumen.setColumnWidth(12, 160);
+  resumen.setColumnWidth(13, 140);
 
   // Fila 1: título
   var tituloRange = resumen.getRange(1, 1, 1, encabezados.length);
@@ -1171,6 +1172,7 @@ function actualizarHojaResumen() {
 
     var nombre  = r1["nombre completo del candidato"] || r2["nombre completo del candidato"] || r3["nombre completo del candidato"] || r4["nombre completo"] || "";
     var prog    = r1["programa / area del concurso"]  || r2["programa / area del concurso"]  || r3["programa / area del concurso"]  || r4["programa academico"] || "";
+    var perfil  = r1["perfil del cargo"] || r2["perfil del cargo"] || r3["perfil del cargo"] || r4["perfil"] || "";
     var sem     = obtenerSemaforoPrograma(prog);
 
     var f1Estado = Object.keys(r1).length > 0 ? "✅ Registrado" : "—";
@@ -1189,7 +1191,7 @@ function actualizarHojaResumen() {
     }
 
     var f2Estado = Object.keys(r2).length > 0
-      ? (String(r2["concepto final"] || "").toUpperCase().indexOf("CUMPLE") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
+      ? (String(r2["concepto final"] || "").toUpperCase().indexOf("CUMPLE CON TODOS") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
       : "—";
 
     // Enlace F2
@@ -1231,7 +1233,7 @@ function actualizarHojaResumen() {
     var f4Estado = Object.keys(r4).length > 0 ? (enlaceF4 ? "✅ " + enlaceF4 : "✅ Ingresado") : "—";
 
     filas.push([
-      fechaIngreso, ced, nombre, prog, sem.facultad, sem.colorFisico,
+      fechaIngreso, ced, nombre, prog, perfil, sem.facultad, sem.colorFisico,
       f1Estado, f2Estado, enlaceF2 || "—",
       puntajeF3, enlaceF3 || "—",
       f4Estado
@@ -1252,7 +1254,7 @@ function actualizarHojaResumen() {
     var progFila = filas[r][3];
     var semFila  = obtenerSemaforoPrograma(progFila);
     resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(semFila.sheetBg);
-    resumen.getRange(r + 3, 6).setFontWeight("bold").setHorizontalAlignment("center");
+    resumen.getRange(r + 3, 7).setFontWeight("bold").setHorizontalAlignment("center");
   }
 
   // Bordes
