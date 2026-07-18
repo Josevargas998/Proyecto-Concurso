@@ -11,6 +11,16 @@ var FORM_IDS = {
   4: "1A-YFD_8xGqwe-Dh3viMGerN6_Uj2agPRR_X8KuIwJlA"
 };
 
+
+// Helper para mostrar alertas en pantalla si hay interfaz grafica activa, o registrar en logs si es segundo plano
+function safeAlert(msg) {
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch(e) {
+    Logger.log("ALERT (UI no disponible): " + msg);
+  }
+}
+
 // =====================================================================
 // MAPEO GLOBAL DE PROGRAMAS A FACULTADES (ACUERDO 029 DE 2026)
 // =====================================================================
@@ -1294,7 +1304,7 @@ function actualizarHojaResumen() {
 
   if (filas.length === 0) {
     resumen.getRange(3, 1).setValue("(Sin datos aún en ninguno de los formularios)");
-    SpreadsheetApp.getUi().alert("📊 Hoja Resumen actualizada. No hay candidatos registrados aún.");
+    safeAlert("📊 Hoja Resumen actualizada. No hay candidatos registrados aún.");
     return;
   }
 
@@ -1316,11 +1326,11 @@ function actualizarHojaResumen() {
   try {
     crearDashboardNativo();
   } catch(exDash) {
-    SpreadsheetApp.getUi().alert("❌ Error al generar el Dashboard:\n" + exDash.toString() + (exDash.lineNumber ? "\nEn la linea: " + exDash.lineNumber : ""));
+    safeAlert("❌ Error al generar el Dashboard:\n" + exDash.toString() + (exDash.lineNumber ? "\nEn la linea: " + exDash.lineNumber : ""));
     Logger.log("Error al crear Dashboard: " + exDash);
   }
 
-  SpreadsheetApp.getUi().alert("📊 Hoja Resumen y Dashboard actualizados con " + filas.length + " candidato(s).");
+  safeAlert("📊 Hoja Resumen y Dashboard actualizados con " + filas.length + " candidato(s).");
 }
 
 // =====================================================================
