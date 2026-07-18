@@ -1440,10 +1440,10 @@ function crearDashboardNativo() {
       .setOption('colors', ['#22c55e', '#ef4444']) // Verde y Rojo
       .setOption('legend', { position: 'bottom', textStyle: { fontSize: 9 } })
       .setOption('chartArea', { left: 15, top: 40, width: '90%', height: '70%' })
+      .setOption('width', 370)
+      .setOption('height', 280)
       .addRange(dashboard.getRange("K4:L6"))
       .setPosition(7, 1, 10, 10) // Fila 7, Columna A (1)
-      .setWidth(370)
-      .setHeight(280)
       .build();
     dashboard.insertChart(pieChart);
   } catch(ePie) {
@@ -1458,10 +1458,10 @@ function crearDashboardNativo() {
       .setOption('colors', [GOLD])
       .setOption('legend', { position: 'none' })
       .setOption('chartArea', { left: 90, top: 40, width: '80%', height: '70%' })
+      .setOption('width', 450)
+      .setOption('height', 280)
       .addRange(dashboard.getRange(RangoFac))
       .setPosition(7, 5, 10, 10) // Fila 7, Columna E (5)
-      .setWidth(450)
-      .setHeight(280)
       .build();
     dashboard.insertChart(barChart);
   } catch(eBar) {
@@ -1561,10 +1561,10 @@ function crearDashboardNativo() {
       .setOption('pieHole', 0.4)
       .setOption('legend', { position: 'bottom', textStyle: { fontSize: 8 } })
       .setOption('chartArea', { left: 10, top: 30, width: '90%', height: '70%' })
+      .setOption('width', 260)
+      .setOption('height', 180)
       .addRange(dashboard.getRange(RangoPerf))
       .setPosition(25, 10, 10, 10) // Fila 25, Columna J (10)
-      .setWidth(260)
-      .setHeight(180)
       .build();
     dashboard.insertChart(perfChart);
   } catch(ePerf) {
@@ -1602,10 +1602,10 @@ function crearDashboardNativo() {
         .setOption('legend', { position: 'none' })
         .setOption('chartArea', { left: 40, top: 40, width: '90%', height: '70%' })
         .setOption('vAxis', { minValue: 0, format: '#' })
+        .setOption('width', 820)
+        .setOption('height', 220)
         .addRange(dashboard.getRange(RangoDias))
         .setPosition(trendStartRow + 2, 1, 10, 10)
-        .setWidth(820)
-        .setHeight(220)
         .build();
       dashboard.insertChart(colChart);
     } catch(eCol) {
