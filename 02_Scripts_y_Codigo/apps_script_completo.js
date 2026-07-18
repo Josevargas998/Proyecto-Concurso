@@ -1551,9 +1551,69 @@ function crearDashboardNativo() {
     .build();
   dashboard.insertChart(perfChart);
 
-  // Ocultar columnas tecnicas
-  dashboard.showColumns(11, 8);
-  dashboard.hideColumns(11, 8);
+
+  // ── 6. GRAFICO TENDENCIA DIARIA DE INGRESOS ────────────────────
+  var diasData = stats.ingresos_por_dia;
+  if (diasData && diasData.length > 0) {
+    var lastProgRow = 26 + (stats.por_programa ? stats.por_programa.length : 0);
+    var trendStartRow = Math.max(lastProgRow + 2, 40);
+    dashboard.getRange("A" + trendStartRow + ":J" + trendStartRow).merge()
+      .setValue("TENDENCIA DIARIA DE INSCRIPCIONES")
+      .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(11)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+    dashboard.setRowHeight(trendStartRow, 28);
+
+    // Tabla oculta para el grafico (columna S:T)
+    dashboard.getRange("S4").setValue("Fecha");
+    dashboard.getRange("T4").setValue("Inscripciones");
+    for (var dd = 0; dd < diasData.length; dd++) {
+      dashboard.getRange(5 + dd, 19).setValue(diasData[dd].fecha);
+      dashboard.getRange(5 + dd, 20).setValue(diasData[dd].count);
+    }
+    dashboard.getRange("S4:T4").setBackground(HDARK).setFontColor(TW).setFontWeight("bold");
+    var RangoDias = "S4:T" + (4 + diasData.length);
+    dashboard.getRange(RangoDias).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
+
+    // Grafico de columnas de tendencia diaria
+    var colChart = dashboard.newChart()
+      .asColumnChart()
+      .setOption('title', 'Inscripciones por Dia')
+      .setOption('colors', [GOLD])
+      .setOption('legend', { position: 'none' })
+      .setOption('chartArea', { left: 40, top: 40, width: '90%', height: '70%' })
+      .setOption('vAxis', { minValue: 0, format: '#' })
+      .addRange(dashboard.getRange(RangoDias))
+      .setPosition(trendStartRow + 2, 1, 10, 10)
+      .setWidth(820)
+      .setHeight(220)
+      .build();
+    dashboard.insertChart(colChart);
+
+    // Tabla visible de ingresos por dia (columna F a I)
+    var tblRow = trendStartRow + 2;
+    dashboard.getRange("F" + tblRow + ":G" + tblRow).merge().setValue("Fecha")
+      .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
+      .setHorizontalAlignment("center");
+    dashboard.getRange("H" + tblRow + ":I" + tblRow).merge().setValue("Candidatos")
+      .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
+      .setHorizontalAlignment("center");
+    for (var dd = 0; dd < diasData.length; dd++) {
+      var dr = tblRow + 1 + dd;
+      dashboard.getRange("F" + dr + ":G" + dr).merge().setValue(diasData[dd].fecha)
+        .setFontSize(9).setHorizontalAlignment("center");
+      dashboard.getRange("H" + dr + ":I" + dr).merge().setValue(diasData[dd].count)
+        .setFontWeight("bold").setFontSize(11).setHorizontalAlignment("center")
+        .setBackground("#eff6ff").setFontColor("#1d4ed8");
+    }
+    if (diasData.length > 0) {
+      dashboard.getRange("F" + tblRow + ":I" + (tblRow + diasData.length))
+        .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+    }
+  }
+
+  // Ocultar columnas tecnicas (K a T = 10 columnas)
+  dashboard.showColumns(11, 10);
+  dashboard.hideColumns(11, 10);
 }
 
 
@@ -2326,7 +2386,6 @@ function generarEstadisticasPublicas() {
   var f3 = leerHojaSimple("Respuestas de formulario 3");
   var f4 = leerHojaSimple("Respuestas de formulario 4");
 
-  // Unión de cédulas únicas
   var cedulas = {};
   [f1, f2, f3, f4].forEach(function(filas) {
     filas.forEach(function(row) {
@@ -2335,7 +2394,6 @@ function generarEstadisticasPublicas() {
     });
   });
 
-  // Indexar por cédula (última entrada)
   function indexar(filas) {
     var idx = {};
     filas.forEach(function(row) {
@@ -2349,7 +2407,6 @@ function generarEstadisticasPublicas() {
   var idxF3 = indexar(f3);
   var idxF4 = indexar(f4);
 
-  // Contadores
   var totalCandidatos = 0;
   var f2Cumple = 0, f2NoCumple = 0, f2Pendiente = 0;
   var conF1 = 0, conF3 = 0, conF4 = 0;
@@ -2368,19 +2425,13 @@ function generarEstadisticasPublicas() {
     if (Object.keys(r3).length > 0) conF3++;
     if (Object.keys(r4).length > 0) conF4++;
 
-    // F2 estado
     if (Object.keys(r2).length > 0) {
       var concepto = String(r2["concepto final"] || "").toUpperCase();
-      if (concepto.indexOf("CUMPLE CON TODOS") >= 0) {
-        f2Cumple++;
-      } else {
-        f2NoCumple++;
-      }
+      if (concepto.indexOf("CUMPLE CON TODOS") >= 0) { f2Cumple++; } else { f2NoCumple++; }
     } else {
       f2Pendiente++;
     }
 
-    // Programa y perfil
     var prog   = buscarVal(r1, ["programa academico", "programa / area", "programa"]) ||
                  buscarVal(r2, ["programa / area", "programa"]) ||
                  buscarVal(r3, ["programa / area", "programa"]) ||
@@ -2392,26 +2443,48 @@ function generarEstadisticasPublicas() {
     var sem    = obtenerSemaforoPrograma(prog);
     var fac    = sem.facultad || "OTRA";
 
-    // Nombre corto de facultad para el gráfico
     var facCorta = fac
       .replace("FACULTAD DE ", "")
-      .replace("CIENCIAS DE LA EDUCACION", "Educación")
+      .replace("CIENCIAS DE LA EDUCACION", "Educacion")
       .replace("CIENCIAS DE LA SALUD", "Salud")
-      .replace("INGENIERIA", "Ingeniería")
+      .replace("INGENIERIA", "Ingenieria")
       .replace("CIENCIAS HUMANAS Y BELLAS ARTES", "Humanidades")
-      .replace("CIENCIAS BASICAS Y TECNOLOGIAS", "Ciencias Básicas")
-      .replace("CIENCIAS ECONOMICAS Y ADMINISTRATIVAS", "Económicas");
+      .replace("CIENCIAS BASICAS Y TECNOLOGIAS", "Ciencias Basicas")
+      .replace("CIENCIAS ECONOMICAS Y ADMINISTRATIVAS", "Economicas");
 
-    if (facCorta) {
-      porFacultad[facCorta] = (porFacultad[facCorta] || 0) + 1;
-    }
+    if (facCorta) porFacultad[facCorta] = (porFacultad[facCorta] || 0) + 1;
     if (prog) {
       if (!porPrograma[prog]) porPrograma[prog] = { count: 0, facultad: facCorta, color: sem.colorFisico };
       porPrograma[prog].count++;
     }
-    if (perfil) {
-      porPerfil[perfil] = (porPerfil[perfil] || 0) + 1;
+    if (perfil) porPerfil[perfil] = (porPerfil[perfil] || 0) + 1;
+  });
+
+  // Ingresos por dia
+  var ingresosPorDia = {};
+  f1.forEach(function(row) {
+    var ts = buscarVal(row, ["marca temporal", "timestamp"]);
+    if (!ts) return;
+    var dateKey = "";
+    try {
+      var d = (ts instanceof Date) ? ts : new Date(ts);
+      if (!isNaN(d.getTime())) {
+        dateKey = Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      }
+    } catch(e) {}
+    if (!dateKey) {
+      var parts = String(ts).split(" ");
+      if (parts[0] && parts[0].indexOf("/") >= 0) {
+        var dp = parts[0].split("/");
+        if (dp.length === 3) dateKey = dp[2] + "-" + ("0"+dp[1]).slice(-2) + "-" + ("0"+dp[0]).slice(-2);
+      }
     }
+    if (dateKey) ingresosPorDia[dateKey] = (ingresosPorDia[dateKey] || 0) + 1;
+  });
+
+  var ingresosList = Object.keys(ingresosPorDia).sort().map(function(k) {
+    var p = k.split("-");
+    return { fecha: p[2]+"/"+p[1], count: ingresosPorDia[k], raw: k };
   });
 
   var ahora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
@@ -2419,26 +2492,17 @@ function generarEstadisticasPublicas() {
   return {
     actualizado: ahora,
     total_candidatos: totalCandidatos,
-    etapas: {
-      f1: conF1,
-      f2: Object.keys(idxF2).length,
-      f3: conF3,
-      f4: conF4
-    },
-    f2_estado: {
-      cumple: f2Cumple,
-      no_cumple: f2NoCumple,
-      pendiente: f2Pendiente
-    },
+    etapas: { f1: conF1, f2: Object.keys(idxF2).length, f3: conF3, f4: conF4 },
+    f2_estado: { cumple: f2Cumple, no_cumple: f2NoCumple, pendiente: f2Pendiente },
     por_facultad: Object.keys(porFacultad).map(function(k) {
       return { facultad: k, count: porFacultad[k] };
     }).sort(function(a, b) { return b.count - a.count; }),
     por_programa: Object.keys(porPrograma).map(function(k) {
-      return { programa: k, count: porPrograma[k].count,
-               facultad: porPrograma[k].facultad, color: porPrograma[k].color };
+      return { programa: k, count: porPrograma[k].count, facultad: porPrograma[k].facultad, color: porPrograma[k].color };
     }).sort(function(a, b) { return b.count - a.count; }),
     por_perfil: Object.keys(porPerfil).map(function(k) {
       return { perfil: k, count: porPerfil[k] };
-    }).sort(function(a, b) { return b.count - a.count; })
+    }).sort(function(a, b) { return b.count - a.count; }),
+    ingresos_por_dia: ingresosList
   };
 }
