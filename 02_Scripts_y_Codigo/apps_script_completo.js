@@ -259,14 +259,15 @@ function onFormSubmit_F2(e) {
     var body    = copyDoc.getBody();
 
     // ── 2. REEMPLAZAR DATOS DEL CANDIDATO CON PLACEHOLDERS ───────────
-    // Reemplaza las etiquetas en la plantilla manteniendo el formato y los logos intactos.
+    // La plantilla tiene: {NOMBRE}, {CC}, {FACULTAD}, {PROGRAMA}, {PERFIL}
+    // replaceText reemplaza SOLO el texto buscado, preservando logos, imagenes y formato del doc.
     body.replaceText("\\{NOMBRE\\}", nombre.toUpperCase());
-    body.replaceText("\\{CC\\}", cedula);
+    body.replaceText("\\{CC\\}",     cedula);
     body.replaceText("\\{FACULTAD\\}", fac.toUpperCase());
     body.replaceText("\\{PROGRAMA\\}", prg.toUpperCase());
-    body.replaceText("\\{PERFIL\\}", perfil.toUpperCase());
+    body.replaceText("\\{PERFIL\\}",   perfil.toUpperCase());
 
-    // Reemplazar la linea de observaciones generales
+    // Reemplazar linea de observaciones generales (linea de guiones bajos)
     if (obsGen && obsGen.length > 0) {
       body.replaceText("_{10,}", obsGen);
     }
