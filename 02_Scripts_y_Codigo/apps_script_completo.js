@@ -2439,3 +2439,18 @@ function generarEstadisticasPublicas() {
     ingresos_por_dia: ingresosList
   };
 }
+
+
+function debugForm3() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName("Respuestas de formulario 3");
+  if (!sh) {
+    Logger.log("No Form 3 sheet found");
+    return;
+  }
+  var data = sh.getDataRange().getValues();
+  Logger.log("Form 3 rows: " + data.length);
+  for (var i = 1; i < data.length; i++) {
+    Logger.log("Row " + i + ": " + data[i].join(" | "));
+  }
+}
