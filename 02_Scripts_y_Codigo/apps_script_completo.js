@@ -1304,7 +1304,15 @@ function actualizarHojaResumen() {
 
   if (filas.length === 0) {
     resumen.getRange(3, 1).setValue("(Sin datos aún en ninguno de los formularios)");
-    safeAlert("📊 Hoja Resumen actualizada. No hay candidatos registrados aún.");
+    
+    // Actualizar el Dashboard para que muestre 0 en todo y limpie datos antiguos
+    try {
+      crearDashboardNativo();
+    } catch(exDash) {
+      Logger.log("Error al crear Dashboard vacío: " + exDash);
+    }
+    
+    safeAlert("📊 Hoja Resumen y Dashboard actualizados. No hay candidatos registrados aún.");
     return;
   }
 
