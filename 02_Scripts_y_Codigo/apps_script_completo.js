@@ -673,8 +673,8 @@ function onFormSubmit_F3(e) {
     }
     function notaRow(r, txt) { mc(r, 1, 4, txt, CN, TD, false, 9, "left"); ws.setRowHeight(r, 18); }
     function justRow(r, txt, pts) {
-      mc(r, 1, 3, "Justificacion: " + (txt || "(No especificada)"), CN, TD, false, 9, "left");
-      sc(r, 4, pts, CS, TD, true, 10, "center");
+      mc(r, 1, 3, "Justificación: " + (txt || "(No especificada)"), CN, TD, false, 9, "left");
+      sc(r, 4, "", CS, TD, true, 10, "center");
       ws.setRowHeight(r, 18);
     }
     function subtotalRow(r, label, pts) {
