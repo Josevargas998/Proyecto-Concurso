@@ -270,12 +270,12 @@ function onFormSubmit_F2(e) {
       if (low.indexOf("nombre:") === 0) {
         paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
                           "                                         C.C. " + cedula);
-      } else if (low.indexOf("facultad de") === 0) {
-        paras[p].setText("FACULTAD DE: " + fac.toUpperCase());
+      } else if (low.indexOf("facultad:") === 0 || low.indexOf("facultad de") === 0) {
+        paras[p].setText("FACULTAD: " + fac.toUpperCase());
       } else if (low.indexOf("programa:") === 0) {
         paras[p].setText("PROGRAMA: " + prg.toUpperCase());
-      } else if (low.indexOf("área o perfil") === 0 || low.indexOf("area o perfil") === 0 || low.indexOf("área o perfl") === 0 || low.indexOf("area o perfl") === 0) {
-        paras[p].setText("ÁREA O PERFIL: " + perfil.toUpperCase());
+      } else if (low.indexOf("perfil:") === 0 || low.indexOf("área o perfil") === 0 || low.indexOf("area o perfil") === 0 || low.indexOf("área o perfl") === 0) {
+        paras[p].setText("PERFIL: " + perfil.toUpperCase());
       }
     }
 
