@@ -213,8 +213,10 @@ function debugF2Columnas() {
 
 // =====================================================================
 // FORMULARIO 2: VERIFICACION DE REQUISITOS
-// Copia la plantilla Google Doc (TPL_FORM2_ID) y llena los datos.
-// Los logos y el formato se preservan automaticamente.
+// Genera el documento DESDE CERO con la estructura exacta de la
+// plantilla Word oficial (formato plantilla.docx).
+// Estructura: Encabezado candidato → Tabla 16 requisitos (3 cols)
+//             → Tabla SI/NO → Tabla firmas (REVISIÓN/VERIFICACIÓN)
 // =====================================================================
 function onFormSubmit_F2(e) {
   try {
@@ -225,25 +227,20 @@ function onFormSubmit_F2(e) {
     var perfil   = d.safe("Perfil del Cargo");
     var obsGen        = d.safe("Observaciones Generales");
     var conceptoFinal = d.safe("Concepto Final");
-    // El concepto final lo decide el evaluador en el formulario
-    // SI el concepto contiene "CUMPLE CON TODOS" → tabla final = SI, de lo contrario NO
     var cumpleTodos = conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0;
 
-    // Buscar la facultad correcta segun el nombre del programa
     function getFacultad(nombrePrograma) {
       var pLow = (nombrePrograma || "").toLowerCase()
                    .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quitar tildes
       for (var clave in GLOBAL_PROG_FACULTAD) {
         if (pLow.indexOf(clave) >= 0) return GLOBAL_PROG_FACULTAD[clave];
       }
-      // Fallback: si Form 1 envio "FACULTAD - Programa", usar la parte izquierda del guion
       if (nombrePrograma.indexOf("-") > -1) return nombrePrograma.split("-")[0].trim().toUpperCase();
-      return ""; // desconocida
+      return "";
     }
 
     var fac = getFacultad(prog);
-    var prg = prog; // el programa siempre es el nombre completo
-
+    var prg = prog;
 
     var colEnlace = d.getColIndex("Enlace Documento");
     if (colEnlace === -1) {
@@ -251,71 +248,7 @@ function onFormSubmit_F2(e) {
       d.hoja.getRange(1, colEnlace).setValue("Enlace Documento");
     }
 
-    // ── 1. COPIAR PLANTILLA (logos y formato intactos) ───────────────
-    var copia   = DriveApp.getFileById(TPL_FORM2_ID)
-                    .makeCopy("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
-    compartirArchivo(copia.getId()); // ← Compartir con cualquiera que tenga el enlace
-    var copyDoc = DocumentApp.openById(copia.getId());
-    var body    = copyDoc.getBody();
-
-    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
-    var paras = body.getParagraphs();
-    for (var p = 0; p < paras.length; p++) {
-      var txt = paras[p].getText();
-      var low = txt.toLowerCase();
-
-      if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
-        // NOMBRE y CC en la misma linea (preservar estructura de la plantilla)
-        paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
-                          "                                         C.C. " + cedula);
-      } else if (low.indexOf("facultad de") >= 0) {
-        paras[p].setText("FACULTAD DE " + fac.toUpperCase());
-      } else if (low.indexOf("programa:") >= 0 && low.indexOf("area") < 0) {
-        paras[p].setText("PROGRAMA: " + prg.toUpperCase());
-      } else if (low.indexOf("area o linea:") >= 0) {
-        paras[p].setText("AREA O LINEA: " + perfil.toUpperCase());
-      }
-    }
-
-    // Reemplazar la linea de subrayados (OBSERVACIONES GENERALES) con el texto del formulario
-    // replaceText busca en TODO el documento, incluyendo dentro de tablas
-    if (obsGen && obsGen.length > 0) {
-      body.replaceText("_{10,}", obsGen);
-    }
-
-    // ── 3. LLENAR TABLA DE REQUISITOS ────────────────────────────────
-    // Mapeo explicito: cada entrada define la fila fisica del doc (en orden a,b,c,d,e...)
-    // cumpleKey: busca en columnas de cumplimiento | obsKey: busca SOLO en columnas Observaciones
-    var mapeoRequisitos = [
-      { cumpleKey: "(a) Formato de inscripcion",              obsKey: "Formato de Inscripcion" },
-      { cumpleKey: "(b) Hoja de Vida UQ",                     obsKey: "Hoja de Vida UQ" },
-      { cumpleKey: "(c) Fotocopia del titulo de pregrado",    obsKey: "Titulo Pregrado" },
-      { cumpleKey: "(d) Fotocopia de titulos o actas de grado de posgrado", obsKey: "Titulo Posgrado" },
-      { cumpleKey: "(e) Fotocopia de la cedula",              obsKey: "Cedula" },
-      { cumpleKey: "(f) Fotocopia de matricula",              obsKey: "Matricula" },
-      { cumpleKey: "(g) Certificado de inhabilidades por delitos", obsKey: "delitos" },
-      { cumpleKey: "(h) Certificado de registro de deudores", obsKey: "deudores" },
-      { cumpleKey: "(i) Certificacion de experiencia especifica en docencia", obsKey: "docencia" },
-      { cumpleKey: "(j) Certificacion de experiencia en investigacion", obsKey: "investigacion" },
-      { cumpleKey: "(k) Certificacion de experiencia en extension", obsKey: "extension" },
-      { cumpleKey: "(l) Certificacion de experiencia en cargos academico", obsKey: "cargos" },
-      { cumpleKey: "(m) Certificacion de experiencia profesional", obsKey: "profesional" },
-      { cumpleKey: "(n) Certificacion de suficiencia linguistica", obsKey: "linguistica" },
-      { cumpleKey: "Documentos debidamente foliados",          obsKey: "foliados" },
-      { cumpleKey: "5. Certificados disciplinarios",           obsKey: "disciplinarios" }
-    ];
-
-    var tables = body.getTables();
-    var reqTable = null;
-    for (var t = 0; t < tables.length; t++) {
-      if (tables[t].getNumRows() >= 10 && tables[t].getRow(0).getNumCells() >= 3) {
-        reqTable = tables[t];
-        break;
-      }
-    }
-
-    // Pre-indexar SOLO las columnas que comienzan con "Observaciones"
-    // para evitar que d.safe() encuentre el valor CUMPLE en vez de la observacion
+    // ── PRE-INDEXAR OBSERVACIONES ────────────────────────────────────
     var obsIndex = {};
     for (var k = 0; k < d.enc.length; k++) {
       var hdr = String(d.enc[k]).trim();
@@ -323,7 +256,6 @@ function onFormSubmit_F2(e) {
         obsIndex[hdr.toLowerCase()] = String(d.fila[k] || "").trim();
       }
     }
-
     function buscarObservacion(obsKey) {
       var kk = obsKey.toLowerCase();
       for (var hdr in obsIndex) {
@@ -331,91 +263,166 @@ function onFormSubmit_F2(e) {
       }
       return "";
     }
-
-    if (reqTable) {
-      for (var i = 0; i < mapeoRequisitos.length && i < reqTable.getNumRows() - 1; i++) {
-        var item    = mapeoRequisitos[i];
-        var row     = reqTable.getRow(i + 1);
-        var vReq    = d.safe(item.cumpleKey);
-        var obsItem = buscarObservacion(item.obsKey);
-        var cumple;
-        if (!vReq) {
-          cumple = "";
-        } else if (vReq.toUpperCase().indexOf("NO CUMPLE") >= 0) {
-          cumple = "NO";
-        } else if (vReq.toUpperCase().indexOf("CUMPLE") >= 0) {
-          cumple = "SI";
-        } else if (vReq.toUpperCase().indexOf("PENDIENTE") >= 0) {
-          cumple = "PENDIENTE";
-        } else {
-          cumple = "";
-        }
-
-        // Columna OBSERVACIONES
-        var cObs = row.getCell(1);
-        cObs.setText(obsItem || "");
-        cObs.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
-
-        // Columna CUMPLE con color
-        var cCump = row.getCell(2);
-        cCump.setText(cumple);
-        var bgColor = cumple === "SI" ? "#b7e1cd" : (cumple === "NO" ? "#f4cccc" : (cumple === "PENDIENTE" ? "#fff2cc" : "#ffffff"));
-        cCump.setBackgroundColor(bgColor);
-        cCump.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
-        cCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-      }
-
-      // Aplicar bordes negros a toda la tabla de requisitos
-      aplicarBordesTabla(reqTable);
+    function getCumple(cumpleKey) {
+      var vReq = d.safe(cumpleKey);
+      if (!vReq) return "";
+      if (vReq.toUpperCase().indexOf("NO CUMPLE") >= 0) return "NO";
+      if (vReq.toUpperCase().indexOf("CUMPLE") >= 0) return "SI";
+      if (vReq.toUpperCase().indexOf("PENDIENTE") >= 0) return "PENDIENTE";
+      return "";
     }
 
-    // ── 4. TABLA "CUMPLE CON TODOS LOS REQUISITOS" ───────────────────
-    for (var t = 0; t < tables.length; t++) {
-      if (tables[t].getNumRows() === 2 && tables[t].getRow(0).getNumCells() >= 3) {
-        var dataRow = tables[t].getRow(1);
-        var siCell  = dataRow.getCell(1);
-        var noCell  = dataRow.getCell(2);
-        siCell.setText(cumpleTodos  ? "X" : "");
-        noCell.setText(!cumpleTodos ? "X" : "");
-        siCell.setBackgroundColor(cumpleTodos  ? "#b7e1cd" : "#ffffff");
-        noCell.setBackgroundColor(!cumpleTodos ? "#f4cccc"  : "#ffffff");
-        siCell.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
-        noCell.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
-        siCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-        noCell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-        aplicarBordesTabla(tables[t]);
-        break;
-      }
+    // ── 1. CREAR DOCUMENTO NUEVO DESDE CERO ─────────────────────────
+    var newDoc = DocumentApp.create("ETAPA2_" + cedula + "_" + nombre.substring(0, 30));
+    compartirArchivo(newDoc.getId());
+    var body = newDoc.getBody();
+
+    // Configurar tamaño Legal (21.59 x 35.56 cm) y margenes segun plantilla Word
+    var docStyle = {};
+    docStyle[DocumentApp.Attribute.PAGE_WIDTH]    = 612;   // 21.59 cm en puntos
+    docStyle[DocumentApp.Attribute.PAGE_HEIGHT]   = 1008;  // 35.56 cm en puntos (Legal)
+    docStyle[DocumentApp.Attribute.MARGIN_LEFT]   = 35.4;  // 1.25 cm
+    docStyle[DocumentApp.Attribute.MARGIN_RIGHT]  = 30.9;  // 1.09 cm
+    docStyle[DocumentApp.Attribute.MARGIN_TOP]    = 70.9;  // 2.50 cm
+    docStyle[DocumentApp.Attribute.MARGIN_BOTTOM] = 70.9;  // 2.50 cm
+    body.setAttributes(docStyle);
+
+    // Helper: parrafo en negrita
+    function addBoldPara(text) {
+      var p = body.appendParagraph(text);
+      p.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      p.setSpacingAfter(2);
+      return p;
     }
 
-    // Aplicar bordes a la tabla de firmas (cualquier tabla con celdas de firma al final)
-    for (var t = 0; t < tables.length; t++) {
-      var numRows = tables[t].getNumRows();
-      var numCols = tables[t].getRow(0).getNumCells();
-      if (numRows >= 2 && numCols >= 2 && tables[t] !== reqTable) {
-        var txt0 = tables[t].getRow(0).getCell(0).getText().toLowerCase();
-        if (txt0.indexOf("revision") >= 0 || txt0.indexOf("nombre") >= 0 || txt0.indexOf("firma") >= 0 || txt0.indexOf("verificacion") >= 0) {
-          aplicarBordesTabla(tables[t]);
-        }
-      }
+    // ── 2. ENCABEZADO: DATOS DEL CANDIDATO ──────────────────────────
+    addBoldPara("NOMBRE: " + nombre.toUpperCase() + "                                         C.C. " + cedula);
+    addBoldPara("FACULTAD DE: " + fac.toUpperCase());
+    addBoldPara("PROGRAMA: " + prg.toUpperCase());
+    addBoldPara("\u00c1REA O PERFIL: " + perfil.toUpperCase());
+    body.appendParagraph("").setSpacingAfter(2);
+    body.appendParagraph("").setSpacingAfter(2);
+    var obsLabel = body.appendParagraph("OBSERVACIONES GENERALES: ");
+    obsLabel.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+    obsLabel.setSpacingAfter(2);
+    var obsLinea = body.appendParagraph(obsGen && obsGen.length > 0 ? obsGen : "________________________________________________________________________________________________________");
+    obsLinea.editAsText().setFontFamily("Arial").setFontSize(10).setBold(false);
+    obsLinea.setSpacingAfter(6);
+
+    // ── 3. TABLA DE REQUISITOS (1 encabezado + 16 filas de datos) ───
+    var mapeoRequisitos = [
+      { label: "(a) Formato de inscripci\u00f3n (A-GH-03-F-13) diligenciado y firmado por el aspirante",                                  cumpleKey: "(a) Formato de inscripcion",                           obsKey: "Formato de Inscripcion" },
+      { label: "(b) Hoja de Vida UQ (VIG-M-DO-03-F-12) diligenciada y firmada por el aspirante",                                          cumpleKey: "(b) Hoja de Vida UQ",                                  obsKey: "Hoja de Vida UQ" },
+      { label: "(c) Fotocopia del t\u00edtulo de pregrado exigido para el perfil o Acta de Grado",                                         cumpleKey: "(c) Fotocopia del titulo de pregrado",                 obsKey: "Titulo Pregrado" },
+      { label: "(d) Fotocopia de t\u00edtulos o actas de grado de posgrado exigidos para el perfil",                                       cumpleKey: "(d) Fotocopia de titulos o actas de grado de posgrado", obsKey: "Titulo Posgrado" },
+      { label: "(e) Fotocopia de la c\u00e9dula y libreta militar (Ley 1861/2017)",                                                        cumpleKey: "(e) Fotocopia de la cedula",                           obsKey: "Cedula" },
+      { label: "(f) Fotocopia de matr\u00edcula o tarjeta profesional (o constancia de tr\u00e1mite)",                                     cumpleKey: "(f) Fotocopia de matricula",                           obsKey: "Matricula" },
+      { label: "(g) Certificado de inhabilidades por delitos sexuales",                                                                    cumpleKey: "(g) Certificado de inhabilidades por delitos",         obsKey: "delitos" },
+      { label: "(h) Certificado de registro de deudores alimentarios morosos (REDAM)",                                                     cumpleKey: "(h) Certificado de registro de deudores",             obsKey: "deudores" },
+      { label: "(i) Certificaci\u00f3n de experiencia espec\u00edfica en docencia universitaria (m\u00ednimo 3 a\u00f1os)",               cumpleKey: "(i) Certificacion de experiencia especifica en docencia", obsKey: "docencia" },
+      { label: "(j) Certificaci\u00f3n de experiencia en investigaci\u00f3n (rol, titulo del proyecto)",                                   cumpleKey: "(j) Certificacion de experiencia en investigacion",    obsKey: "investigacion" },
+      { label: "(k) Certificaci\u00f3n de experiencia en extensi\u00f3n o desarrollo social",                                              cumpleKey: "(k) Certificacion de experiencia en extension",        obsKey: "extension" },
+      { label: "(l) Certificaci\u00f3n de experiencia en cargos acad\u00e9mico-administrativos en IES",                                    cumpleKey: "(l) Certificacion de experiencia en cargos academico", obsKey: "cargos" },
+      { label: "(m) Certificaci\u00f3n de experiencia profesional diferente a docencia (m\u00ednimo 5 a\u00f1os - Art. 7 literal c)",      cumpleKey: "(m) Certificacion de experiencia profesional",        obsKey: "profesional" },
+      { label: "(n) Certificaci\u00f3n de suficiencia ling\u00fc\u00edstica nivel B1 en ingles",                                           cumpleKey: "(n) Certificacion de suficiencia linguistica",         obsKey: "linguistica" },
+      { label: "Documentos debidamente foliados (Art. 9 Acuerdo 029)",                                                                    cumpleKey: "Documentos debidamente foliados",                      obsKey: "foliados" },
+      { label: "5. Certificados disciplinarios, judiciales o fiscales vigentes",                                                           cumpleKey: "5. Certificados disciplinarios",                       obsKey: "disciplinarios" }
+    ];
+
+    var reqTable = body.appendTable();
+    // Encabezado de la tabla
+    var hRow = reqTable.appendTableRow();
+    var hC0 = hRow.appendTableCell("REQUISITOS DEL PERFIL");
+    var hC1 = hRow.appendTableCell("OBSERVACIONES");
+    var hC2 = hRow.appendTableCell("CUMPLE");
+    [hC0, hC1, hC2].forEach(function(c) {
+      c.setBackgroundColor("#c0c0c0");
+      c.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      c.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+    // Filas de datos
+    for (var i = 0; i < mapeoRequisitos.length; i++) {
+      var item    = mapeoRequisitos[i];
+      var cumple  = getCumple(item.cumpleKey);
+      var obs     = buscarObservacion(item.obsKey);
+      var bgColor = cumple === "SI" ? "#b7e1cd" : (cumple === "NO" ? "#f4cccc" : (cumple === "PENDIENTE" ? "#fff2cc" : "#ffffff"));
+      var dRow    = reqTable.appendTableRow();
+      var dC0     = dRow.appendTableCell(item.label);
+      dC0.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
+      var dC1     = dRow.appendTableCell(obs || "");
+      dC1.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
+      var dC2     = dRow.appendTableCell(cumple);
+      dC2.setBackgroundColor(bgColor);
+      dC2.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      dC2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     }
+    aplicarBordesTabla(reqTable);
+    body.appendParagraph("").setSpacingAfter(4);
 
+    // ── 4. TABLA SI/NO: CUMPLE CON TODOS LOS REQUISITOS ─────────────
+    var cumpleTable = body.appendTable();
+    var chRow = cumpleTable.appendTableRow();
+    var chC0 = chRow.appendTableCell("Cumple con todos los requisitos");
+    var chC1 = chRow.appendTableCell("SI");
+    var chC2 = chRow.appendTableCell("NO");
+    [chC0, chC1, chC2].forEach(function(c) {
+      c.setBackgroundColor("#c0c0c0");
+      c.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      c.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+    var cdRow = cumpleTable.appendTableRow();
+    var cdC0 = cdRow.appendTableCell("Cumple con todos los requisitos");
+    var cdC1 = cdRow.appendTableCell(cumpleTodos  ? "X" : "");
+    var cdC2 = cdRow.appendTableCell(!cumpleTodos ? "X" : "");
+    cdC0.editAsText().setFontFamily("Arial").setFontSize(10).setBold(false);
+    cdC1.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+    cdC2.editAsText().setFontFamily("Arial").setFontSize(12).setBold(true);
+    cdC1.setBackgroundColor(cumpleTodos  ? "#b7e1cd" : "#ffffff");
+    cdC2.setBackgroundColor(!cumpleTodos ? "#f4cccc"  : "#ffffff");
+    cdC1.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    cdC2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    aplicarBordesTabla(cumpleTable);
+    body.appendParagraph("").setSpacingAfter(4);
 
-    copyDoc.saveAndClose();
+    // ── 5. TABLA DE FIRMAS: REVISION / VERIFICACION (3 filas x 2 cols) ──
+    var firmasTable = body.appendTable();
+    var fR0 = firmasTable.appendTableRow();
+    var fR0C0 = fR0.appendTableCell("REVISI\u00d3N                                                                                  VERIFICACI\u00d3N");
+    var fR0C1 = fR0.appendTableCell("REVISI\u00d3N                                                                                  VERIFICACI\u00d3N");
+    [fR0C0, fR0C1].forEach(function(c) {
+      c.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      c.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+    var fR1 = firmasTable.appendTableRow();
+    var fR1C0 = fR1.appendTableCell("\n\n\nNOMBRE Y FIRMA FUNCIONARIO ASUNTOS PROFESORALES");
+    var fR1C1 = fR1.appendTableCell("\n\n\nNOMBRE Y FIRMA MIEMBRO COMISI\u00d3N");
+    [fR1C0, fR1C1].forEach(function(c) {
+      c.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      c.getChild(c.getNumChildren() - 1).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+    var fR2 = firmasTable.appendTableRow();
+    var fR2C0 = fR2.appendTableCell("\n\n\nVo.Bo. JEFE OFICINA ASUNTOS PROFESORALES");
+    var fR2C1 = fR2.appendTableCell("\n\n\nVo.Bo. JEFE OFICINA ASUNTOS PROFESORALES");
+    [fR2C0, fR2C1].forEach(function(c) {
+      c.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+      c.getChild(c.getNumChildren() - 1).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    });
+    aplicarBordesTabla(firmasTable);
+
+    // ── 6. GUARDAR Y REGISTRAR ENLACE ───────────────────────────────
+    newDoc.saveAndClose();
     d.hoja.getRange(d.ult, colEnlace).setValue(
-      "https://docs.google.com/document/d/" + copia.getId() + "/edit"
+      "https://docs.google.com/document/d/" + newDoc.getId() + "/edit"
     );
 
-    // ── 5. GENERAR ENLACE AL FORMULARIO 3 (Mapeado automatico si cumple) ──
+    // ── 7. GENERAR ENLACE AL FORMULARIO 3 (si cumple) ───────────────
     var colLinkF3 = d.getColIndex("Llenar Formulario 3");
     if (colLinkF3 === -1) {
-      colLinkF3 = d.enc.length + 2; // Columna siguiente
+      colLinkF3 = d.enc.length + 2;
       d.hoja.getRange(1, colLinkF3).setValue("Llenar Formulario 3");
     }
-
     if (cumpleTodos) {
-      // Generar el enlace prellenado para el Formulario 3
-      var f3 = FormApp.openById(FORM_IDS[3]);
+      var f3   = FormApp.openById(FORM_IDS[3]);
       var map3 = getItemsMapping(f3);
       var linkF3 = buildUrl(f3, map3, cedula, nombre, prog, perfil);
       d.hoja.getRange(d.ult, colLinkF3).setValue(linkF3);
@@ -424,10 +431,9 @@ function onFormSubmit_F2(e) {
       d.hoja.getRange(d.ult, colLinkF3).setValue("N/A - No cumple requisitos habilitantes");
     }
 
-    // ── 6. SEMÁFORO: COLOREAR FILA Y REGISTRAR COLOR FÍSICO ──
+    // ── 8. SEMAFORO: COLOREAR FILA Y REGISTRAR COLOR FISICO ──────────
     var semInfo = obtenerSemaforoPrograma(prog);
     colorearFila(d.hoja, d.ult, semInfo.sheetBg);
-    
     var colColorEstante = d.getColIndex("Color Estante");
     if (colColorEstante === -1) {
       colColorEstante = d.hoja.getLastColumn() + 1;
@@ -437,6 +443,7 @@ function onFormSubmit_F2(e) {
 
   } catch(err) { Logger.log("Error F2: " + err); }
 }
+
 
 // =====================================================================
 // HELPER: Extraer puntaje numerico de una opcion del formulario
