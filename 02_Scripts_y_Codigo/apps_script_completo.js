@@ -2022,4 +2022,180 @@ function reordenarFormulario3() {
 }
 
 
+// =====================================================================
+// WEB APP PÚBLICA — Dashboard de estadísticas del concurso
+// Implementar como Web App con acceso "Cualquier persona" para leer datos
+// desde el dashboard Next.js desplegado en Vercel.
+// URL: Extensiones > Apps Script > Implementar > Nueva implementación > Web App
+// =====================================================================
+function doGet(e) {
+  var output = ContentService
+    .createTextOutput(JSON.stringify(generarEstadisticasPublicas()))
+    .setMimeType(ContentService.MimeType.JSON);
+  return output;
+}
 
+function generarEstadisticasPublicas() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+
+  function leerHojaSimple(nombre) {
+    var sh = ss.getSheetByName(nombre);
+    if (!sh || sh.getLastRow() < 2) return [];
+    var last = sh.getLastRow();
+    var cols = sh.getLastColumn();
+    var enc  = sh.getRange(1, 1, 1, cols).getValues()[0];
+    var data = sh.getRange(2, 1, last - 1, cols).getValues();
+    return data.map(function(row) {
+      var obj = {};
+      enc.forEach(function(h, i) {
+        var key = String(h).toLowerCase().trim();
+        var val = row[i];
+        if (obj[key] !== undefined && obj[key] !== "") {
+          if (val !== undefined && val !== null && String(val).trim() !== "") obj[key] = val;
+        } else {
+          obj[key] = (val !== undefined && val !== null) ? val : "";
+        }
+      });
+      return obj;
+    });
+  }
+
+  function buscarVal(obj, palabras) {
+    for (var i = 0; i < palabras.length; i++) {
+      var kw = palabras[i].toLowerCase();
+      for (var k in obj) {
+        if (k.toLowerCase().indexOf(kw) >= 0) {
+          var v = String(obj[k] || "").trim();
+          if (v) return v;
+        }
+      }
+    }
+    return "";
+  }
+
+  function getCedula(row) {
+    var v = buscarVal(row, ["cedula del candidato", "cedula de ciudadania", "cedul"]);
+    return String(v).trim();
+  }
+
+  var f1 = leerHojaSimple("Respuestas de formulario 1");
+  var f2 = leerHojaSimple("Respuestas de formulario 2");
+  var f3 = leerHojaSimple("Respuestas de formulario 3");
+  var f4 = leerHojaSimple("Respuestas de formulario 4");
+
+  // Unión de cédulas únicas
+  var cedulas = {};
+  [f1, f2, f3, f4].forEach(function(filas) {
+    filas.forEach(function(row) {
+      var ced = getCedula(row);
+      if (ced) cedulas[ced] = true;
+    });
+  });
+
+  // Indexar por cédula (última entrada)
+  function indexar(filas) {
+    var idx = {};
+    filas.forEach(function(row) {
+      var ced = getCedula(row);
+      if (ced) idx[ced] = row;
+    });
+    return idx;
+  }
+  var idxF1 = indexar(f1);
+  var idxF2 = indexar(f2);
+  var idxF3 = indexar(f3);
+  var idxF4 = indexar(f4);
+
+  // Contadores
+  var totalCandidatos = 0;
+  var f2Cumple = 0, f2NoCumple = 0, f2Pendiente = 0;
+  var conF1 = 0, conF3 = 0, conF4 = 0;
+  var porFacultad = {};
+  var porPrograma = {};
+  var porPerfil   = {};
+
+  Object.keys(cedulas).forEach(function(ced) {
+    totalCandidatos++;
+    var r1 = idxF1[ced] || {};
+    var r2 = idxF2[ced] || {};
+    var r3 = idxF3[ced] || {};
+    var r4 = idxF4[ced] || {};
+
+    if (Object.keys(r1).length > 0) conF1++;
+    if (Object.keys(r3).length > 0) conF3++;
+    if (Object.keys(r4).length > 0) conF4++;
+
+    // F2 estado
+    if (Object.keys(r2).length > 0) {
+      var concepto = String(r2["concepto final"] || "").toUpperCase();
+      if (concepto.indexOf("CUMPLE CON TODOS") >= 0) {
+        f2Cumple++;
+      } else {
+        f2NoCumple++;
+      }
+    } else {
+      f2Pendiente++;
+    }
+
+    // Programa y perfil
+    var prog   = buscarVal(r1, ["programa academico", "programa / area", "programa"]) ||
+                 buscarVal(r2, ["programa / area", "programa"]) ||
+                 buscarVal(r3, ["programa / area", "programa"]) ||
+                 buscarVal(r4, ["programa"]);
+    var perfil = buscarVal(r1, ["perfil del cargo", "perfil"]) ||
+                 buscarVal(r2, ["perfil del cargo", "perfil"]) ||
+                 buscarVal(r3, ["perfil del cargo", "perfil"]) ||
+                 buscarVal(r4, ["perfil"]);
+    var sem    = obtenerSemaforoPrograma(prog);
+    var fac    = sem.facultad || "OTRA";
+
+    // Nombre corto de facultad para el gráfico
+    var facCorta = fac
+      .replace("FACULTAD DE ", "")
+      .replace("CIENCIAS DE LA EDUCACION", "Educación")
+      .replace("CIENCIAS DE LA SALUD", "Salud")
+      .replace("INGENIERIA", "Ingeniería")
+      .replace("CIENCIAS HUMANAS Y BELLAS ARTES", "Humanidades")
+      .replace("CIENCIAS BASICAS Y TECNOLOGIAS", "Ciencias Básicas")
+      .replace("CIENCIAS ECONOMICAS Y ADMINISTRATIVAS", "Económicas");
+
+    if (facCorta) {
+      porFacultad[facCorta] = (porFacultad[facCorta] || 0) + 1;
+    }
+    if (prog) {
+      if (!porPrograma[prog]) porPrograma[prog] = { count: 0, facultad: facCorta, color: sem.colorFisico };
+      porPrograma[prog].count++;
+    }
+    if (perfil) {
+      porPerfil[perfil] = (porPerfil[perfil] || 0) + 1;
+    }
+  });
+
+  var ahora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+
+  return {
+    actualizado: ahora,
+    total_candidatos: totalCandidatos,
+    etapas: {
+      f1: conF1,
+      f2: Object.keys(idxF2).length,
+      f3: conF3,
+      f4: conF4
+    },
+    f2_estado: {
+      cumple: f2Cumple,
+      no_cumple: f2NoCumple,
+      pendiente: f2Pendiente
+    },
+    por_facultad: Object.keys(porFacultad).map(function(k) {
+      return { facultad: k, count: porFacultad[k] };
+    }).sort(function(a, b) { return b.count - a.count; }),
+    por_programa: Object.keys(porPrograma).map(function(k) {
+      return { programa: k, count: porPrograma[k].count,
+               facultad: porPrograma[k].facultad, color: porPrograma[k].color };
+    }).sort(function(a, b) { return b.count - a.count; }),
+    por_perfil: Object.keys(porPerfil).map(function(k) {
+      return { perfil: k, count: porPerfil[k] };
+    }).sort(function(a, b) { return b.count - a.count; })
+  };
+}
