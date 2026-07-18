@@ -1160,7 +1160,21 @@ function actualizarHojaResumen() {
     return idx;
   }
 
-  var idxF1 = indexarPorCedula(f1, "cedula del candidato");
+  // ── Función para buscar un valor por coincidencia parcial en las claves ──
+  function buscar(obj, palabrasClave) {
+    for (var i = 0; i < palabrasClave.length; i++) {
+      var kw = palabrasClave[i].toLowerCase();
+      for (var k in obj) {
+        if (k.toLowerCase().indexOf(kw) >= 0) {
+          var val = String(obj[k] || "").trim();
+          if (val) return val;
+        }
+      }
+    }
+    return "";
+  }
+
+  var idxF1 = indexarPorCedula(f1, "cedula de ciudadania");
   var idxF2 = indexarPorCedula(f2, "cedula del candidato");
   var idxF3 = indexarPorCedula(f3, "cedula del candidato");
   var idxF4 = indexarPorCedula(f4, "cedula de ciudadania");
@@ -1179,10 +1193,25 @@ function actualizarHojaResumen() {
     var r3 = idxF3[ced] || {};
     var r4 = idxF4[ced] || {};
 
-    var nombre  = r1["nombre completo del candidato"] || r2["nombre completo del candidato"] || r3["nombre completo del candidato"] || r4["nombre completo"] || "";
-    var prog    = r1["programa / area del concurso"]  || r2["programa / area del concurso"]  || r3["programa / area del concurso"]  || r4["programa academico"] || "";
-    var perfil  = r1["perfil del cargo"] || r2["perfil del cargo"] || r3["perfil del cargo"] || r4["perfil"] || "";
-    var sem     = obtenerSemaforoPrograma(prog);
+    // Buscar nombre — acepta variantes en todos los formularios
+    var nombre = buscar(r1, ["nombre completo"]) ||
+                 buscar(r2, ["nombre completo"]) ||
+                 buscar(r3, ["nombre completo"]) ||
+                 buscar(r4, ["nombre completo"]);
+
+    // Buscar programa — F1 usa "programa academico", F2/F3 usan "programa / area", F4 "programa"
+    var prog = buscar(r1, ["programa academico", "programa / area", "programa"]) ||
+               buscar(r2, ["programa / area", "programa academico", "programa"]) ||
+               buscar(r3, ["programa / area", "programa academico", "programa"]) ||
+               buscar(r4, ["programa academico", "programa"]);
+
+    // Buscar perfil — F1 usa "Perfil del Cargo (segun convocatoria)"
+    var perfil = buscar(r1, ["perfil del cargo", "perfil"]) ||
+                 buscar(r2, ["perfil del cargo", "perfil"]) ||
+                 buscar(r3, ["perfil del cargo", "perfil"]) ||
+                 buscar(r4, ["perfil"]);
+
+    var sem = obtenerSemaforoPrograma(prog);
 
     var f1Estado = Object.keys(r1).length > 0 ? "✅ Registrado" : "—";
     
@@ -1194,9 +1223,9 @@ function actualizarHojaResumen() {
         if (!isNaN(d.getTime())) {
           fechaIngreso = Utilities.formatDate(d, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
         } else {
-          fechaIngreso = r1[tsKey];
+          fechaIngreso = String(r1[tsKey]);
         }
-      } catch(e) { fechaIngreso = r1[tsKey]; }
+      } catch(e) { fechaIngreso = String(r1[tsKey]); }
     }
 
     var f2Estado = Object.keys(r2).length > 0
@@ -1215,24 +1244,24 @@ function actualizarHojaResumen() {
     // Recalcular puntaje desde respuestas F3 si existen
     if (Object.keys(r3).length > 0) {
       try {
-        var p1   = extraerPuntaje(r3["nivel academico acreditado"] || "");
-        var p2a  = extraerPuntaje(r3["2a. experiencia docente"] || "");
-        var p2bC = extraerPuntaje(r3["2b. participacion como coordinador de proyectos de extension"] || "");
-        var p2bF = extraerPuntaje(r3["2b. participacion como facilitador (cursos formacion continua en ies)"] || "");
-        var p2bL = extraerPuntaje(r3["2b. participacion por labor en proyectos de extension"] || "");
+        var p1   = extraerPuntaje(buscar(r3, ["nivel academico acreditado", "nivel academico"]));
+        var p2a  = extraerPuntaje(buscar(r3, ["2a. experiencia docente", "experiencia docente"]));
+        var p2bC = extraerPuntaje(buscar(r3, ["coordinador de proyectos"]));
+        var p2bF = extraerPuntaje(buscar(r3, ["facilitador"]));
+        var p2bL = extraerPuntaje(buscar(r3, ["labor en proyectos"]));
         var p2b  = Math.min(8, p2bC + p2bF + p2bL);
-        var p2c  = extraerPuntaje(r3["2c. experiencia profesional diferente"] || "");
-        var p2d  = extraerPuntaje(r3["2d. experiencia en cargos academico"] || "");
+        var p2c  = extraerPuntaje(buscar(r3, ["2c. experiencia profesional", "experiencia profesional diferente"]));
+        var p2d  = extraerPuntaje(buscar(r3, ["2d. experiencia en cargos", "cargos academico"]));
         var p2   = Math.min(17, p2a + p2b + p2c + p2d);
-        var p3a1 = extraerPuntaje(r3["3a. articulos en revistas indexadas - categoria a1 minciencias"] || "");
-        var p3a2 = extraerPuntaje(r3["3b. articulos en revistas indexadas - categoria a2 minciencias"] || "");
-        var p3l  = extraerPuntaje(r3["3c. libros (máximo 3 autores, últimos 5 años)"] || "");
-        var p3o  = extraerPuntaje(r3["3d. obras artísticas (últimos 5 años)"] || "");
-        var p3s  = extraerPuntaje(r3["3e. software (máximo 3 autores, últimos 5 años)"] || "");
-        var p3av = extraerPuntaje(r3["3f. producción audiovisual y comunicativa (últimos 5 años)"] || "");
+        var p3a1 = extraerPuntaje(buscar(r3, ["categoria a1", "articulos a1", "a1 minciencias"]));
+        var p3a2 = extraerPuntaje(buscar(r3, ["categoria a2", "articulos a2", "a2 minciencias"]));
+        var p3l  = extraerPuntaje(buscar(r3, ["3c. libros", "libros (m"]));
+        var p3o  = extraerPuntaje(buscar(r3, ["3d. obras", "obras artísticas", "obras artisticas"]));
+        var p3s  = extraerPuntaje(buscar(r3, ["3e. software"]));
+        var p3av = extraerPuntaje(buscar(r3, ["3f. produccion", "producción audiovisual", "produccion audiovisual"]));
         var p3   = Math.min(8, p3a1 + p3a2 + p3l + p3o + p3s + p3av);
         var tot  = Math.min(30, p1 + p2 + p3);
-        puntajeF3 = tot + " / 30";
+        puntajeF3 = tot + " / 30 pts";
       } catch(ex) { puntajeF3 = "Ver doc."; }
     }
 
