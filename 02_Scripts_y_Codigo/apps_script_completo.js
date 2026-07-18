@@ -1399,12 +1399,10 @@ function crearDashboardNativo() {
     .setHorizontalAlignment("center");
   dashboard.setRowHeight(7, 18);
 
-  // --- SPARKLINE PIE: Habilitados vs No Habilitados ---
-  // Write raw data to helper cells first, then reference them
-  dashboard.getRange("A8:E8").merge().setFormula(
-    '=SPARKLINE({' + cumple + ',' + noCumple + '},' +
-    '{"charttype","pie";"color1","#22c55e";"color2","#ef4444"})'
-  );
+  // --- SPARKLINE PIE (Spanish Locale) ---
+  var pieFormula = '=SPARKLINE({' + cumple + '\\' + noCumple + '}; ' +
+    '{"charttype"\\"pie";"color1"\\"#22c55e";"color2"\\"#ef4444"})';
+  dashboard.getRange("A8:E18").merge().setFormula(pieFormula);
   for (var r = 8; r <= 18; r++) dashboard.setRowHeight(r, 24);
 
   // Leyenda del pie
@@ -1414,7 +1412,7 @@ function crearDashboardNativo() {
     .setFontColor("#ef4444").setFontWeight("bold").setFontSize(8);
   dashboard.setRowHeight(19, 16);
 
-  // --- SPARKLINE BAR: Candidatos por Facultad ---
+  // --- SPARKLINE BAR: Facultades (Spanish Locale) ---
   var facList = stats.por_facultad;
   var maxFac  = 1;
   facList.forEach(function(f) { if (f.count > maxFac) maxFac = f.count; });
@@ -1424,11 +1422,9 @@ function crearDashboardNativo() {
     var fac   = facList[f];
     var barV  = fac.count;
     var resto = maxFac - barV;
-    // Use comma for horizontal array in bar sparkline (English setFormula syntax)
-    dashboard.getRange("F" + facRow + ":H" + facRow).merge().setFormula(
-      '=SPARKLINE({' + barV + ',' + resto + '},' +
-      '{"charttype","bar";"color1","' + GOLD + '";"color2","#e2e8f0"})'
-    );
+    var barFormula = '=SPARKLINE({' + barV + '\\' + resto + '}; ' +
+      '{"charttype"\\"bar";"color1"\\"' + GOLD + '";"color2"\\"#e2e8f0"})';
+    dashboard.getRange("F" + facRow + ":H" + facRow).merge().setFormula(barFormula);
     dashboard.getRange("I" + facRow + ":J" + facRow).merge()
       .setValue(fac.facultad + " (" + fac.count + ")")
       .setFontSize(8).setVerticalAlignment("middle");
@@ -1500,10 +1496,9 @@ function crearDashboardNativo() {
     var perf = perfList[pf];
     dashboard.getRange("H" + filaPerf).setValue(perf.perfil).setFontSize(9);
     var restoP = maxPerf - perf.count;
-    dashboard.getRange("I" + filaPerf + ":J" + filaPerf).merge().setFormula(
-      '=SPARKLINE({' + perf.count + ',' + restoP + '},' +
-      '{"charttype","bar";"color1","' + HDARK + '";"color2","#e2e8f0"})'
-    );
+    var perfFormula = '=SPARKLINE({' + perf.count + '\\' + restoP + '}; ' +
+      '{"charttype"\\"bar";"color1"\\"' + HDARK + '";"color2"\\"#e2e8f0"})';
+    dashboard.getRange("I" + filaPerf + ":J" + filaPerf).merge().setFormula(perfFormula);
     dashboard.setRowHeight(filaPerf, 20);
     filaPerf++;
   }
@@ -1533,10 +1528,6 @@ function crearDashboardNativo() {
       .setHorizontalAlignment("center");
     dashboard.setRowHeight(tblRow, 20);
 
-    // Datos de tabla
-    var maxDia = 1;
-    diasData.forEach(function(d) { if (d.count > maxDia) maxDia = d.count; });
-
     for (var d = 0; d < diasData.length; d++) {
       var dr = tblRow + 1 + d;
       dashboard.getRange("A" + dr + ":B" + dr).merge().setValue(diasData[d].fecha)
@@ -1549,11 +1540,10 @@ function crearDashboardNativo() {
     dashboard.getRange("A" + tblRow + ":C" + (tblRow + diasData.length))
       .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
 
-    // Sparkline columnas para el grafico de tendencia diaria
-    var diasVals = diasData.map(function(d) { return d.count; }).join(",");
-    dashboard.getRange("D" + tblRow + ":J" + (tblRow + diasData.length)).merge().setFormula(
-      '=SPARKLINE({' + diasVals + '},{"charttype","column";"color","' + GOLD + '"})'
-    );
+    // Sparkline columnas (Spanish syntax: backslash for row separator, semicolon for arg separator)
+    var diasVals = diasData.map(function(d) { return d.count; }).join("\\");
+    var trendFormula = '=SPARKLINE({' + diasVals + '}; {"charttype"\\"column";"color"\\"' + GOLD + '"})';
+    dashboard.getRange("D" + tblRow + ":J" + (tblRow + diasData.length)).merge().setFormula(trendFormula);
   }
 }
 
