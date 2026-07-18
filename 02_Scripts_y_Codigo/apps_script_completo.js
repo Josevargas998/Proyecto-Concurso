@@ -1086,23 +1086,24 @@ function actualizarHojaResumen() {
   // ── Encabezado ────────────────────────────────────────────────────
   var HDARK = "#1a1a2e"; var HMED = "#16213e"; var TW = "#ffffff";
   var encabezados = [
-    "Cedula", "Nombre Completo", "Programa / Area", "Facultad", "Color Estante",
+    "Fecha Ingreso", "Cedula", "Nombre Completo", "Programa / Area", "Facultad", "Color Estante",
     "F1 Registro", "F2 Estado", "F2 Doc. Lista Chequeo",
     "F3 Puntaje HV", "F3 Doc. Calificacion",
     "F4 Ficha Ingreso"
   ];
   resumen.setFrozenRows(2);
-  resumen.setColumnWidth(1, 110);
-  resumen.setColumnWidth(2, 200);
+  resumen.setColumnWidth(1, 130);
+  resumen.setColumnWidth(2, 110);
   resumen.setColumnWidth(3, 200);
-  resumen.setColumnWidth(4, 220);
-  resumen.setColumnWidth(5, 100);
-  resumen.setColumnWidth(6, 120);
-  resumen.setColumnWidth(7, 140);
-  resumen.setColumnWidth(8, 160);
-  resumen.setColumnWidth(9, 110);
-  resumen.setColumnWidth(10, 160);
-  resumen.setColumnWidth(11, 140);
+  resumen.setColumnWidth(4, 200);
+  resumen.setColumnWidth(5, 220);
+  resumen.setColumnWidth(6, 100);
+  resumen.setColumnWidth(7, 120);
+  resumen.setColumnWidth(8, 140);
+  resumen.setColumnWidth(9, 160);
+  resumen.setColumnWidth(10, 110);
+  resumen.setColumnWidth(11, 160);
+  resumen.setColumnWidth(12, 140);
 
   // Fila 1: título
   var tituloRange = resumen.getRange(1, 1, 1, encabezados.length);
@@ -1173,6 +1174,20 @@ function actualizarHojaResumen() {
     var sem     = obtenerSemaforoPrograma(prog);
 
     var f1Estado = Object.keys(r1).length > 0 ? "✅ Registrado" : "—";
+    
+    var fechaIngreso = "—";
+    var tsKey = Object.keys(r1).filter(function(k) { return k.indexOf("marca temporal") >= 0 || k.indexOf("timestamp") >= 0; })[0];
+    if (tsKey && r1[tsKey]) {
+      try {
+        var d = new Date(r1[tsKey]);
+        if (!isNaN(d.getTime())) {
+          fechaIngreso = Utilities.formatDate(d, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+        } else {
+          fechaIngreso = r1[tsKey];
+        }
+      } catch(e) { fechaIngreso = r1[tsKey]; }
+    }
+
     var f2Estado = Object.keys(r2).length > 0
       ? (String(r2["concepto final"] || "").toUpperCase().indexOf("CUMPLE") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
       : "—";
@@ -1216,7 +1231,7 @@ function actualizarHojaResumen() {
     var f4Estado = Object.keys(r4).length > 0 ? (enlaceF4 ? "✅ " + enlaceF4 : "✅ Ingresado") : "—";
 
     filas.push([
-      ced, nombre, prog, sem.facultad, sem.colorFisico,
+      fechaIngreso, ced, nombre, prog, sem.facultad, sem.colorFisico,
       f1Estado, f2Estado, enlaceF2 || "—",
       puntajeF3, enlaceF3 || "—",
       f4Estado
@@ -1234,10 +1249,10 @@ function actualizarHojaResumen() {
 
   // Colorear filas según facultad
   for (var r = 0; r < filas.length; r++) {
-    var progFila = filas[r][2];
+    var progFila = filas[r][3];
     var semFila  = obtenerSemaforoPrograma(progFila);
     resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(semFila.sheetBg);
-    resumen.getRange(r + 3, 5).setFontWeight("bold").setHorizontalAlignment("center");
+    resumen.getRange(r + 3, 6).setFontWeight("bold").setHorizontalAlignment("center");
   }
 
   // Bordes
