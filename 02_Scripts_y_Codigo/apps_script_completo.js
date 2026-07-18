@@ -1339,7 +1339,9 @@ function crearDashboardNativo() {
   dashboard.clearFormats();
   var charts = dashboard.getCharts();
   for (var i = 0; i < charts.length; i++) {
-    dashboard.removeChart(charts[i]);
+    try {
+      dashboard.removeChart(charts[i]);
+    } catch(e) {}
   }
   
   // Mostrar lineas de cuadricula temporalmente para aplicar bordes y luego ocultar para estetica limpia
@@ -1428,41 +1430,47 @@ function crearDashboardNativo() {
   dashboard.getRange("N4:O4").setBackground(HDARK).setFontColor(TW).setFontWeight("bold");
   dashboard.getRange(RangoFac).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
 
-  // ── 4. INSERTAR Y CONFIGURAR GRÁFICOS ──────────────────────────────
+  // ── 4. INSERTAR Y CONFIGURAR GRÁFICOS (Protegido contra fallas) ──
   // Gráfico Circular (Cumplimiento)
-  var pieChart = dashboard.newChart()
-    .asPieChart()
-    .setOption('title', 'Candidatos Habilitados (Etapa 2)')
-    .setOption('pieHole', 0.4) // Efecto dona
-    .setOption('colors', ['#22c55e', '#ef4444']) // Verde y Rojo
-    .setOption('legend', { position: 'bottom', textStyle: { fontSize: 9 } })
-    .setOption('chartArea', { left: 15, top: 40, width: '90%', height: '70%' })
-    .addRange(dashboard.getRange("K4:L6"))
-    .setPosition(7, 1, 10, 10) // Fila 7, Columna A (1)
-    .setWidth(370)
-    .setHeight(280)
-    .build();
-  dashboard.insertChart(pieChart);
+  try {
+    var pieChart = dashboard.newChart()
+      .asPieChart()
+      .setOption('title', 'Candidatos Habilitados (Etapa 2)')
+      .setOption('pieHole', 0.4) // Efecto dona
+      .setOption('colors', ['#22c55e', '#ef4444']) // Verde y Rojo
+      .setOption('legend', { position: 'bottom', textStyle: { fontSize: 9 } })
+      .setOption('chartArea', { left: 15, top: 40, width: '90%', height: '70%' })
+      .addRange(dashboard.getRange("K4:L6"))
+      .setPosition(7, 1, 10, 10) // Fila 7, Columna A (1)
+      .setWidth(370)
+      .setHeight(280)
+      .build();
+    dashboard.insertChart(pieChart);
+  } catch(ePie) {
+    Logger.log("Error al crear grafico circular: " + ePie);
+  }
 
   // Gráfico de Barras (Candidatos por Facultad)
-  var barChart = dashboard.newChart()
-    .asBarChart()
-    .setOption('title', 'Candidatos Postulados por Facultad')
-    .setOption('colors', [GOLD])
-    .setOption('legend', { position: 'none' })
-    .setOption('chartArea', { left: 90, top: 40, width: '80%', height: '70%' })
-    .addRange(dashboard.getRange(RangoFac))
-    .setPosition(7, 5, 10, 10) // Fila 7, Columna E (5)
-    .setWidth(450)
-    .setHeight(280)
-    .build();
-  dashboard.insertChart(barChart);
+  try {
+    var barChart = dashboard.newChart()
+      .asBarChart()
+      .setOption('title', 'Candidatos Postulados por Facultad')
+      .setOption('colors', [GOLD])
+      .setOption('legend', { position: 'none' })
+      .setOption('chartArea', { left: 90, top: 40, width: '80%', height: '70%' })
+      .addRange(dashboard.getRange(RangoFac))
+      .setPosition(7, 5, 10, 10) // Fila 7, Columna E (5)
+      .setWidth(450)
+      .setHeight(280)
+      .build();
+    dashboard.insertChart(barChart);
+  } catch(eBar) {
+    Logger.log("Error al crear grafico de barras: " + eBar);
+  }
 
-  // ── 5. OCULTAR DATOS TÉCNICOS DE LOS GRÁFICOS (Columnas K a P) ───
-  // Esto hace que el usuario y el rector solo vean el dashboard elegante, sin ver las tablas de apoyo.
   dashboard.showColumns(11, 6); // Asegurar que existen
 
-  // 5. DETALLE POR PROGRAMA
+  // ── 5. DETALLE POR PROGRAMA ────────────────────────────────────────
   dashboard.getRange("A23:J23").merge()
     .setValue("DESGLOSE DETALLADO DE CANDIDATOS POR PROGRAMA Y PERFIL DE CARGO")
     .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(11)
@@ -1487,12 +1495,15 @@ function crearDashboardNativo() {
     dashboard.getRange("D" + filaProg).setValue(progList[p].facultad).setFontSize(8).setVerticalAlignment("middle");
     dashboard.getRange("E" + filaProg).setValue(progList[p].color).setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
     
-    // Obtener color hexadecimal
+    // Obtener color hexadecimal (seguro contra nulos)
     var colorHex = "#f8fafc";
-    for (var fKey in SEMAFORO_FACULTAD) {
-      if (fKey.toLowerCase().indexOf(progList[p].facultad.toLowerCase()) >= 0) {
-        colorHex = SEMAFORO_FACULTAD[fKey].sheetBg;
-        break;
+    var facName = progList[p].facultad || "";
+    if (facName) {
+      for (var fKey in SEMAFORO_FACULTAD) {
+        if (fKey.toLowerCase().indexOf(facName.toLowerCase()) >= 0) {
+          colorHex = SEMAFORO_FACULTAD[fKey].sheetBg;
+          break;
+        }
       }
     }
     dashboard.getRange("E" + filaProg).setBackground(colorHex);
@@ -1523,7 +1534,7 @@ function crearDashboardNativo() {
     dashboard.getRange("H25:I" + (filaPerf - 1)).setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  // Escribir datos de perfiles en la zona oculta para grafico (Q4:R...)
+  // Escribir datos de perfiles en la zona oculta para gráfico (Q4:R...)
   dashboard.getRange("Q4").setValue("Perfil");
   dashboard.getRange("R4").setValue("Candidatos");
   var totalPerfiles = perfList.length;
@@ -1542,20 +1553,23 @@ function crearDashboardNativo() {
   var RangoPerf = "Q4:R" + (4 + totalPerfiles);
   dashboard.getRange(RangoPerf).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
 
-  // Grafico Dona de Perfiles (Ubicado en J25)
-  var perfChart = dashboard.newChart()
-    .asPieChart()
-    .setOption('title', 'Distribucion por Perfil')
-    .setOption('pieHole', 0.4)
-    .setOption('legend', { position: 'bottom', textStyle: { fontSize: 8 } })
-    .setOption('chartArea', { left: 10, top: 30, width: '90%', height: '70%' })
-    .addRange(dashboard.getRange(RangoPerf))
-    .setPosition(25, 10, 10, 10) // Fila 25, Columna J (10)
-    .setWidth(260)
-    .setHeight(180)
-    .build();
-  dashboard.insertChart(perfChart);
-
+  // Gráfico Dona de Perfiles (Ubicado en J25)
+  try {
+    var perfChart = dashboard.newChart()
+      .asPieChart()
+      .setOption('title', 'Distribucion por Perfil')
+      .setOption('pieHole', 0.4)
+      .setOption('legend', { position: 'bottom', textStyle: { fontSize: 8 } })
+      .setOption('chartArea', { left: 10, top: 30, width: '90%', height: '70%' })
+      .addRange(dashboard.getRange(RangoPerf))
+      .setPosition(25, 10, 10, 10) // Fila 25, Columna J (10)
+      .setWidth(260)
+      .setHeight(180)
+      .build();
+    dashboard.insertChart(perfChart);
+  } catch(ePerf) {
+    Logger.log("Error al crear grafico de perfiles: " + ePerf);
+  }
 
   // ── 6. GRAFICO TENDENCIA DIARIA DE INGRESOS ────────────────────
   var diasData = stats.ingresos_por_dia;
@@ -1580,19 +1594,23 @@ function crearDashboardNativo() {
     dashboard.getRange(RangoDias).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
 
     // Grafico de columnas de tendencia diaria
-    var colChart = dashboard.newChart()
-      .asColumnChart()
-      .setOption('title', 'Inscripciones por Dia')
-      .setOption('colors', [GOLD])
-      .setOption('legend', { position: 'none' })
-      .setOption('chartArea', { left: 40, top: 40, width: '90%', height: '70%' })
-      .setOption('vAxis', { minValue: 0, format: '#' })
-      .addRange(dashboard.getRange(RangoDias))
-      .setPosition(trendStartRow + 2, 1, 10, 10)
-      .setWidth(820)
-      .setHeight(220)
-      .build();
-    dashboard.insertChart(colChart);
+    try {
+      var colChart = dashboard.newChart()
+        .asColumnChart()
+        .setOption('title', 'Inscripciones por Dia')
+        .setOption('colors', [GOLD])
+        .setOption('legend', { position: 'none' })
+        .setOption('chartArea', { left: 40, top: 40, width: '90%', height: '70%' })
+        .setOption('vAxis', { minValue: 0, format: '#' })
+        .addRange(dashboard.getRange(RangoDias))
+        .setPosition(trendStartRow + 2, 1, 10, 10)
+        .setWidth(820)
+        .setHeight(220)
+        .build();
+      dashboard.insertChart(colChart);
+    } catch(eCol) {
+      Logger.log("Error al crear grafico de tendencia diaria: " + eCol);
+    }
 
     // Tabla visible de ingresos por dia (columna F a I)
     var tblRow = trendStartRow + 2;
@@ -1616,9 +1634,13 @@ function crearDashboardNativo() {
     }
   }
 
-  // Ocultar columnas tecnicas (K a T = 10 columnas)
-  dashboard.showColumns(11, 10);
-  dashboard.hideColumns(11, 10);
+  // ── 7. OCULTAR COLUMNAS TÉCNICAS (K a T) ─────────────────────────
+  try {
+    dashboard.showColumns(11, 10);
+    dashboard.hideColumns(11, 10);
+  } catch(eHide) {
+    Logger.log("No se pudieron ocultar las columnas tecnicas: " + eHide);
+  }
 }
 
 
