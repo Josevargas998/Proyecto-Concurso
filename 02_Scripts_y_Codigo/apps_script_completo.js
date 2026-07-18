@@ -2,7 +2,7 @@
 // VARIABLES GLOBALES
 // =====================================================================
 var SS_ID        = "1fXU5t9fmDfXwskFs42r1eZNZa0KCxNo1Li77yrDpyvY";
-var TPL_FORM2_ID = "1zMog_h7OCTm5thWbjCFP6J5D6fiWh9RJL9NHQHl29Mo"; // Plantilla Lista de Chequeo
+var TPL_FORM2_ID = "1CzMo2cRbfQqFXWphJAzV7VdbmxYXMpZqOB2FZq9VZS8"; // Plantilla Lista de Chequeo (formato plantilla.docx convertido)
 var TPL_FORM3_ID = "1AsZXFF6IC4Ue5FNeGmfRTVk3-qAvGABxGw-hEgkmscM"; // Plantilla Hoja de Calificacion
 
 var FORM_IDS = {
@@ -259,21 +259,22 @@ function onFormSubmit_F2(e) {
     var body    = copyDoc.getBody();
 
     // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
+    // Los textos de busqueda deben coincidir EXACTAMENTE con la plantilla Google Docs
+    // Plantilla tiene: "NOMBRE:   C.C." / "FACULTAD DE:" / "PROGRAMA:" / "AREA O PERFL:"
     var paras = body.getParagraphs();
     for (var p = 0; p < paras.length; p++) {
       var txt = paras[p].getText();
-      var low = txt.toLowerCase();
+      var low = txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
       if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
-        // NOMBRE y CC en la misma linea (preservar estructura de la plantilla)
         paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
                           "                                         C.C. " + cedula);
-      } else if (low.indexOf("facultad de") >= 0) {
-        paras[p].setText("FACULTAD DE " + fac.toUpperCase());
+      } else if (low.indexOf("facultad de:") >= 0) {
+        paras[p].setText("FACULTAD DE: " + fac.toUpperCase());
       } else if (low.indexOf("programa:") >= 0 && low.indexOf("area") < 0) {
         paras[p].setText("PROGRAMA: " + prg.toUpperCase());
-      } else if (low.indexOf("area o linea:") >= 0) {
-        paras[p].setText("AREA O LINEA: " + perfil.toUpperCase());
+      } else if (low.indexOf("area o perfl:") >= 0 || low.indexOf("area o perfil:") >= 0 || low.indexOf("area o linea:") >= 0) {
+        paras[p].setText("\u00c1REA O PERFL: " + perfil.toUpperCase());
       }
     }
 
@@ -312,6 +313,15 @@ function onFormSubmit_F2(e) {
         reqTable = tables[t];
         break;
       }
+    }
+
+    // Si la plantilla tiene 16 filas de datos (1 header + 15 datos) agregar la fila 16
+    // El mapeoRequisitos tiene 16 items, la tabla debe tener 17 filas (1 header + 16 datos)
+    if (reqTable && reqTable.getNumRows() < 17) {
+      var newRow = reqTable.appendTableRow();
+      newRow.appendTableCell("5. Certificados disciplinarios, judiciales o fiscales vigentes");
+      newRow.appendTableCell("");
+      newRow.appendTableCell("");
     }
 
     // Pre-indexar SOLO las columnas que comienzan con "Observaciones"
