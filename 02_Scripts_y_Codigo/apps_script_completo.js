@@ -1342,8 +1342,12 @@ function crearDashboardNativo() {
     dashboard.removeChart(charts[i]);
   }
   
-  // Mostrar líneas de cuadrícula temporalmente para aplicar bordes y luego ocultar para estética limpia
-  dashboard.setHideGridlines(true);
+  // Mostrar lineas de cuadricula temporalmente para aplicar bordes y luego ocultar para estetica limpia
+  try {
+    dashboard.setHideGridlines(true);
+  } catch(eGrid) {
+    Logger.log('No se pudo ocultar las lineas de cuadricula: ' + eGrid);
+  }
   
   // Obtener estadísticas
   var stats = generarEstadisticasPublicas();
