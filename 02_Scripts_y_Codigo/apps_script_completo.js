@@ -1634,12 +1634,11 @@ function crearDashboardNativo() {
     }
   }
 
-  // ── 7. OCULTAR COLUMNAS TÉCNICAS (K a T) ─────────────────────────
+  // ── 7. MOSTRAR COLUMNAS DE SOPORTE (Necesario para evitar gráficos vacíos) ──
   try {
     dashboard.showColumns(11, 10);
-    dashboard.hideColumns(11, 10);
-  } catch(eHide) {
-    Logger.log("No se pudieron ocultar las columnas tecnicas: " + eHide);
+  } catch(eShow) {
+    Logger.log("No se pudieron mostrar las columnas: " + eShow);
   }
 }
 
