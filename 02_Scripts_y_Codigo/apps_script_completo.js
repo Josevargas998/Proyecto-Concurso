@@ -258,28 +258,15 @@ function onFormSubmit_F2(e) {
     var copyDoc = DocumentApp.openById(copia.getId());
     var body    = copyDoc.getBody();
 
-    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO EN LOS PARRAFOS ───────────
-    // Los textos de busqueda deben coincidir EXACTAMENTE con la plantilla Google Docs
-    // Plantilla tiene: "NOMBRE:   C.C." / "FACULTAD DE:" / "PROGRAMA:" / "AREA O PERFL:"
-    var paras = body.getParagraphs();
-    for (var p = 0; p < paras.length; p++) {
-      var txt = paras[p].getText();
-      var low = txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    // ── 2. REEMPLAZAR DATOS DEL CANDIDATO CON PLACEHOLDERS ───────────
+    // Reemplaza las etiquetas en la plantilla manteniendo el formato y los logos intactos.
+    body.replaceText("\\{NOMBRE\\}", nombre.toUpperCase());
+    body.replaceText("\\{CC\\}", cedula);
+    body.replaceText("\\{FACULTAD\\}", fac.toUpperCase());
+    body.replaceText("\\{PROGRAMA\\}", prg.toUpperCase());
+    body.replaceText("\\{PERFIL\\}", perfil.toUpperCase());
 
-      if (low.indexOf("nombre:") >= 0 && low.indexOf("c.c.") >= 0) {
-        paras[p].setText("NOMBRE: " + nombre.toUpperCase() +
-                          "                                         C.C. " + cedula);
-      } else if (low.indexOf("facultad de:") >= 0) {
-        paras[p].setText("FACULTAD DE: " + fac.toUpperCase());
-      } else if (low.indexOf("programa:") >= 0 && low.indexOf("area") < 0) {
-        paras[p].setText("PROGRAMA: " + prg.toUpperCase());
-      } else if (low.indexOf("area o perfl:") >= 0 || low.indexOf("area o perfil:") >= 0 || low.indexOf("area o linea:") >= 0) {
-        paras[p].setText("\u00c1REA O PERFL: " + perfil.toUpperCase());
-      }
-    }
-
-    // Reemplazar la linea de subrayados (OBSERVACIONES GENERALES) con el texto del formulario
-    // replaceText busca en TODO el documento, incluyendo dentro de tablas
+    // Reemplazar la linea de observaciones generales
     if (obsGen && obsGen.length > 0) {
       body.replaceText("_{10,}", obsGen);
     }
