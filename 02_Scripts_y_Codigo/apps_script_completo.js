@@ -831,6 +831,9 @@ function onFormSubmit_F3(e) {
     d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ss.getId() + "/edit");
     Logger.log("F3 OK — " + nombre + " — Total: " + pTotal + "/30");
 
+    // Auto-actualizar Hoja Resumen tras cada calificacion F3
+    try { actualizarHojaResumen(); } catch(exR) { Logger.log("No se pudo auto-actualizar resumen: " + exR); }
+
   } catch(err) { Logger.log("Error F3: " + err); }
 }
 
