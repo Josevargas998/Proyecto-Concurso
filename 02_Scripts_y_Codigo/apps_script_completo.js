@@ -1456,7 +1456,104 @@ function crearDashboardNativo() {
   // ── 5. OCULTAR DATOS TÉCNICOS DE LOS GRÁFICOS (Columnas K a P) ───
   // Esto hace que el usuario y el rector solo vean el dashboard elegante, sin ver las tablas de apoyo.
   dashboard.showColumns(11, 6); // Asegurar que existen
-  dashboard.hideColumns(11, 6); // Ocultar columnas K, L, M, N, O, P
+
+  // 5. DETALLE POR PROGRAMA
+  dashboard.getRange("A23:J23").merge()
+    .setValue("DESGLOSE DETALLADO DE CANDIDATOS POR PROGRAMA Y PERFIL DE CARGO")
+    .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(11)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  dashboard.setRowHeight(23, 28);
+
+  // Cabecera Tabla Programas (A25:F25)
+  dashboard.getRange("A25:C25").merge().setValue("Programa Académico");
+  dashboard.getRange("D25").setValue("Facultad");
+  dashboard.getRange("E25").setValue("Color Estante");
+  dashboard.getRange("F25").setValue("Candidatos");
+  
+  dashboard.getRange("A25:F25").setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  dashboard.setRowHeight(25, 22);
+
+  // Llenar tabla de programas
+  var progList = stats.por_programa;
+  var filaProg = 26;
+  for (var p = 0; p < progList.length; p++) {
+    dashboard.getRange("A" + filaProg + ":C" + filaProg).merge().setValue(progList[p].programa).setFontSize(9).setVerticalAlignment("middle");
+    dashboard.getRange("D" + filaProg).setValue(progList[p].facultad).setFontSize(8).setVerticalAlignment("middle");
+    dashboard.getRange("E" + filaProg).setValue(progList[p].color).setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    
+    // Obtener color hexadecimal
+    var colorHex = "#f8fafc";
+    for (var fKey in SEMAFORO_FACULTAD) {
+      if (fKey.toLowerCase().indexOf(progList[p].facultad.toLowerCase()) >= 0) {
+        colorHex = SEMAFORO_FACULTAD[fKey].sheetBg;
+        break;
+      }
+    }
+    dashboard.getRange("E" + filaProg).setBackground(colorHex);
+    dashboard.getRange("F" + filaProg).setValue(progList[p].count).setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    dashboard.setRowHeight(filaProg, 20);
+    filaProg++;
+  }
+  if (progList.length > 0) {
+    dashboard.getRange("A25:F" + (filaProg - 1)).setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+  }
+
+  // Cabecera Tabla Perfiles (H25:I25)
+  dashboard.getRange("H25").setValue("Perfil del Cargo");
+  dashboard.getRange("I25").setValue("Candidatos");
+  
+  dashboard.getRange("H25:I25").setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+
+  var perfList = stats.por_perfil;
+  var filaPerf = 26;
+  for (var pf = 0; pf < perfList.length; pf++) {
+    dashboard.getRange("H" + filaPerf).setValue(perfList[pf].perfil).setFontSize(9).setVerticalAlignment("middle");
+    dashboard.getRange("I" + filaPerf).setValue(perfList[pf].count).setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    dashboard.setRowHeight(filaPerf, 20);
+    filaPerf++;
+  }
+  if (perfList.length > 0) {
+    dashboard.getRange("H25:I" + (filaPerf - 1)).setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+  }
+
+  // Escribir datos de perfiles en la zona oculta para grafico (Q4:R...)
+  dashboard.getRange("Q4").setValue("Perfil");
+  dashboard.getRange("R4").setValue("Candidatos");
+  var totalPerfiles = perfList.length;
+  if (totalPerfiles === 0) {
+    dashboard.getRange("Q5").setValue("Sin registros");
+    dashboard.getRange("R5").setValue(0);
+    totalPerfiles = 1;
+  } else {
+    for (var pf = 0; pf < totalPerfiles; pf++) {
+      dashboard.getRange(5 + pf, 17).setValue(perfList[pf].perfil);
+      dashboard.getRange(5 + pf, 18).setValue(perfList[pf].count);
+    }
+  }
+
+  dashboard.getRange("Q4:R4").setBackground(HDARK).setFontColor(TW).setFontWeight("bold");
+  var RangoPerf = "Q4:R" + (4 + totalPerfiles);
+  dashboard.getRange(RangoPerf).setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
+
+  // Grafico Dona de Perfiles (Ubicado en J25)
+  var perfChart = dashboard.newChart()
+    .asPieChart()
+    .setOption('title', 'Distribucion por Perfil')
+    .setOption('pieHole', 0.4)
+    .setOption('legend', { position: 'bottom', textStyle: { fontSize: 8 } })
+    .setOption('chartArea', { left: 10, top: 30, width: '90%', height: '70%' })
+    .addRange(dashboard.getRange(RangoPerf))
+    .setPosition(25, 10, 10, 10) // Fila 25, Columna J (10)
+    .setWidth(260)
+    .setHeight(180)
+    .build();
+  dashboard.insertChart(perfChart);
+
+  // Ocultar columnas tecnicas
+  dashboard.showColumns(11, 8);
+  dashboard.hideColumns(11, 8);
 }
 
 
