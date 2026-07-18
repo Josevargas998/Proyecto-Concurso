@@ -1326,7 +1326,6 @@ function actualizarHojaResumen() {
 function crearDashboardNativo() {
   var ss = SpreadsheetApp.openById(SS_ID);
 
-  // Obtener o crear pestaña DASHBOARD
   var dashboard = ss.getSheetByName("DASHBOARD");
   if (!dashboard) {
     dashboard = ss.insertSheet("DASHBOARD");
@@ -1334,7 +1333,6 @@ function crearDashboardNativo() {
     ss.moveActiveSheet(1);
   }
 
-  // Limpieza inicial total
   dashboard.clear();
   dashboard.clearFormats();
   var charts = dashboard.getCharts();
@@ -1342,28 +1340,17 @@ function crearDashboardNativo() {
     try { dashboard.removeChart(charts[i]); } catch(e) {}
   }
 
-  // Obtener estadísticas
   var stats = generarEstadisticasPublicas();
   SpreadsheetApp.flush();
 
-  // Colores corporativos UQ
   var HDARK = "#003366";
   var TW    = "#ffffff";
   var GOLD  = "#C9A227";
 
-  // Anchos de columna para presentacion
-  dashboard.setColumnWidth(1, 120);
-  dashboard.setColumnWidth(2, 110);
-  dashboard.setColumnWidth(3, 110);
-  dashboard.setColumnWidth(4, 100);
-  dashboard.setColumnWidth(5, 90);
-  dashboard.setColumnWidth(6, 90);
-  dashboard.setColumnWidth(7, 90);
-  dashboard.setColumnWidth(8, 90);
-  dashboard.setColumnWidth(9, 90);
-  dashboard.setColumnWidth(10, 90);
+  // Anchos de columna
+  for (var c = 1; c <= 10; c++) dashboard.setColumnWidth(c, 100);
 
-  // ── 1. TITULO PRINCIPAL ─────────────────────────────────────────────
+  // ── 1. TITULO ────────────────────────────────────────────────────────
   dashboard.getRange("A1:J1").merge()
     .setValue("CONCURSO PUBLICO DE MERITOS DOCENTE DE CARRERA 2026")
     .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(14)
@@ -1378,102 +1365,98 @@ function crearDashboardNativo() {
   dashboard.setRowHeight(3, 6);
 
   // ── 2. TARJETAS KPI ─────────────────────────────────────────────────
-  var cardsDef = [
-    { t: "A4:B4", v: "A5:B5", title: "TOTAL CANDIDATOS",       val: stats.total_candidatos,       bg: "#f8fafc", tc: "#64748b", vc: HDARK,     border: "#cbd5e1" },
-    { t: "C4:D4", v: "C5:D5", title: "HABILITADOS (CUMPLE)",   val: stats.f2_estado.cumple,        bg: "#f0fdf4", tc: "#166534", vc: "#15803d", border: "#bbf7d0" },
-    { t: "E4:F4", v: "E5:F5", title: "NO HABILITADOS",         val: stats.f2_estado.no_cumple,     bg: "#fef2f2", tc: "#991b1b", vc: "#b91c1c", border: "#fecaca" },
-    { t: "G4:H4", v: "G5:H5", title: "EN CALIFICACION (F3)",   val: stats.etapas.f3,               bg: "#eff6ff", tc: "#1e3a8a", vc: "#1d4ed8", border: "#bfdbfe" },
-    { t: "I4:J4", v: "I5:J5", title: "FICHA INGRESO (F4)",     val: stats.etapas.f4,               bg: "#faf5ff", tc: "#581c87", vc: "#7e22ce", border: "#e9d5ff" }
+  var cards = [
+    { t:"A4:B4", v:"A5:B5", title:"TOTAL CANDIDATOS",     val:stats.total_candidatos,    bg:"#f8fafc", tc:"#64748b", vc:HDARK,     bo:"#cbd5e1" },
+    { t:"C4:D4", v:"C5:D5", title:"HABILITADOS (CUMPLE)", val:stats.f2_estado.cumple,    bg:"#f0fdf4", tc:"#166534", vc:"#15803d", bo:"#bbf7d0" },
+    { t:"E4:F4", v:"E5:F5", title:"NO HABILITADOS",       val:stats.f2_estado.no_cumple, bg:"#fef2f2", tc:"#991b1b", vc:"#b91c1c", bo:"#fecaca" },
+    { t:"G4:H4", v:"G5:H5", title:"EN CALIFICACION (F3)", val:stats.etapas.f3,           bg:"#eff6ff", tc:"#1e3a8a", vc:"#1d4ed8", bo:"#bfdbfe" },
+    { t:"I4:J4", v:"I5:J5", title:"FICHA INGRESO (F4)",   val:stats.etapas.f4,           bg:"#faf5ff", tc:"#581c87", vc:"#7e22ce", bo:"#e9d5ff" }
   ];
   dashboard.setRowHeight(4, 20);
   dashboard.setRowHeight(5, 34);
-
-  cardsDef.forEach(function(c) {
-    dashboard.getRange(c.t).merge()
-      .setValue(c.title).setBackground(c.bg).setFontColor(c.tc)
-      .setFontWeight("bold").setFontSize(8)
+  cards.forEach(function(c) {
+    dashboard.getRange(c.t).merge().setValue(c.title)
+      .setBackground(c.bg).setFontColor(c.tc).setFontWeight("bold").setFontSize(8)
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
-    dashboard.getRange(c.v).merge()
-      .setValue(c.val).setBackground(c.bg).setFontColor(c.vc)
-      .setFontWeight("bold").setFontSize(20)
+    dashboard.getRange(c.v).merge().setValue(c.val)
+      .setBackground(c.bg).setFontColor(c.vc).setFontWeight("bold").setFontSize(20)
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
-    var cells = c.t.split(":")[0] + ":" + c.v.split(":")[1];
-    dashboard.getRange(cells).setBorder(true, true, true, true, true, true, c.border, SpreadsheetApp.BorderStyle.SOLID);
+    var full = c.t.split(":")[0] + ":" + c.v.split(":")[1];
+    dashboard.getRange(full).setBorder(true, true, true, true, true, true, c.bo, SpreadsheetApp.BorderStyle.SOLID);
   });
-
   dashboard.setRowHeight(6, 8);
 
-  // ── 3. GRAFICOS CON SPARKLINE (nativo, 100% compatible) ───────────
-  // Grafico de torta: Habilitados vs No Habilitados
+  // ── 3. SECCION GRAFICOS ──────────────────────────────────────────────
   var cumple   = stats.f2_estado.cumple    || 0;
   var noCumple = stats.f2_estado.no_cumple || 0;
-  var total    = cumple + noCumple || 1;
 
-  // Titulo seccion graficos
-  dashboard.getRange("A7:E7").merge()
-    .setValue("Habilitados Etapa 2")
+  // Cabeceras de seccion
+  dashboard.getRange("A7:E7").merge().setValue("Habilitados vs No Habilitados")
+    .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
+    .setHorizontalAlignment("center");
+  dashboard.getRange("F7:J7").merge().setValue("Candidatos por Facultad")
     .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
     .setHorizontalAlignment("center");
   dashboard.setRowHeight(7, 18);
 
-  // Sparkline de torta: Habilitados vs No Habilitados
-  var pieFormula = '=SPARKLINE({' + cumple + ',' + noCumple + '},{"charttype","pie";"color1","#22c55e";"color2","#ef4444"})';
-  dashboard.getRange("A8:E18").merge().setFormula(pieFormula);
-  dashboard.setRowHeight(8, 24); dashboard.setRowHeight(9, 24); dashboard.setRowHeight(10, 24);
-  dashboard.setRowHeight(11, 24); dashboard.setRowHeight(12, 24); dashboard.setRowHeight(13, 24);
-  dashboard.setRowHeight(14, 24); dashboard.setRowHeight(15, 24); dashboard.setRowHeight(16, 24);
-  dashboard.setRowHeight(17, 24); dashboard.setRowHeight(18, 24);
+  // --- SPARKLINE PIE: Habilitados vs No Habilitados ---
+  // Write raw data to helper cells first, then reference them
+  dashboard.getRange("A8:E8").merge().setFormula(
+    '=SPARKLINE({' + cumple + ',' + noCumple + '},' +
+    '{"charttype","pie";"color1","#22c55e";"color2","#ef4444"})'
+  );
+  for (var r = 8; r <= 18; r++) dashboard.setRowHeight(r, 24);
 
-  // Leyenda debajo del pie
-  dashboard.getRange("A19:B19").merge().setValue("✅ Habilitados").setFontColor("#22c55e").setFontWeight("bold").setFontSize(8);
-  dashboard.getRange("C19").setValue(cumple).setFontWeight("bold").setHorizontalAlignment("center");
-  dashboard.getRange("D19:E19").merge().setValue("❌ No habilitados").setFontColor("#ef4444").setFontWeight("bold").setFontSize(8);
+  // Leyenda del pie
+  dashboard.getRange("A19").setValue("Cumple: " + cumple)
+    .setFontColor("#22c55e").setFontWeight("bold").setFontSize(8);
+  dashboard.getRange("B19:C19").merge().setValue("No Cumple: " + noCumple)
+    .setFontColor("#ef4444").setFontWeight("bold").setFontSize(8);
+  dashboard.setRowHeight(19, 16);
 
-  // Titulo facultades
-  dashboard.getRange("F7:J7").merge()
-    .setValue("Candidatos por Facultad")
-    .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
-    .setHorizontalAlignment("center");
-
-  // Barras por facultad usando SPARKLINE horizontal
+  // --- SPARKLINE BAR: Candidatos por Facultad ---
   var facList = stats.por_facultad;
-  var maxFac = 1;
+  var maxFac  = 1;
   facList.forEach(function(f) { if (f.count > maxFac) maxFac = f.count; });
 
   var facRow = 8;
   for (var f = 0; f < facList.length && f < 8; f++) {
-    var fac = facList[f];
-    var barVal = fac.count;
-    var barFormula = '=SPARKLINE({' + barVal + ';' + (maxFac - barVal) + '},{"charttype","bar";"color1","' + GOLD + '";"color2","#f1f5f9";"max",' + maxFac + '})';
-    dashboard.getRange("F" + facRow + ":H" + facRow).merge().setFormula(barFormula);
-    dashboard.getRange("I" + facRow + ":J" + facRow).merge().setValue(fac.facultad + " (" + fac.count + ")")
+    var fac   = facList[f];
+    var barV  = fac.count;
+    var resto = maxFac - barV;
+    // Use comma for horizontal array in bar sparkline (English setFormula syntax)
+    dashboard.getRange("F" + facRow + ":H" + facRow).merge().setFormula(
+      '=SPARKLINE({' + barV + ',' + resto + '},' +
+      '{"charttype","bar";"color1","' + GOLD + '";"color2","#e2e8f0"})'
+    );
+    dashboard.getRange("I" + facRow + ":J" + facRow).merge()
+      .setValue(fac.facultad + " (" + fac.count + ")")
       .setFontSize(8).setVerticalAlignment("middle");
     dashboard.setRowHeight(facRow, 22);
     facRow++;
   }
-
   dashboard.setRowHeight(20, 8);
 
-  // ── 4. DESGLOSE DETALLADO ──────────────────────────────────────────
-  dashboard.getRange("A21:J21").merge()
+  // ── 4. DESGLOSE POR PROGRAMA Y PERFIL ───────────────────────────────
+  var sepRow = Math.max(facRow, 21);
+  dashboard.getRange("A" + sepRow + ":J" + sepRow).merge()
     .setValue("DESGLOSE DETALLADO DE CANDIDATOS POR PROGRAMA Y PERFIL DE CARGO")
     .setBackground(HDARK).setFontColor(TW).setFontWeight("bold").setFontSize(11)
     .setHorizontalAlignment("center").setVerticalAlignment("middle");
-  dashboard.setRowHeight(21, 28);
-  dashboard.setRowHeight(22, 6);
+  dashboard.setRowHeight(sepRow, 28);
 
-  // Cabecera Tabla Programas
-  dashboard.getRange("A23:C23").merge().setValue("Programa Academico");
-  dashboard.getRange("D23").setValue("Facultad");
-  dashboard.getRange("E23").setValue("Estante");
-  dashboard.getRange("F23").setValue("Cands.");
-  dashboard.getRange("A23:F23")
+  var hdrRow = sepRow + 2;
+  dashboard.getRange("A" + hdrRow + ":C" + hdrRow).merge().setValue("Programa Academico");
+  dashboard.getRange("D" + hdrRow).setValue("Facultad");
+  dashboard.getRange("E" + hdrRow).setValue("Estante");
+  dashboard.getRange("F" + hdrRow).setValue("Cands.");
+  dashboard.getRange("A" + hdrRow + ":F" + hdrRow)
     .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
     .setHorizontalAlignment("center").setVerticalAlignment("middle");
-  dashboard.setRowHeight(23, 22);
+  dashboard.setRowHeight(hdrRow, 22);
 
   var progList = stats.por_programa;
-  var filaProg = 24;
+  var filaProg = hdrRow + 1;
   for (var p = 0; p < progList.length; p++) {
     var prog = progList[p];
     var colorHex = "#f8fafc";
@@ -1487,7 +1470,7 @@ function crearDashboardNativo() {
     }
     dashboard.getRange("A" + filaProg + ":C" + filaProg).merge()
       .setValue(prog.programa).setFontSize(9).setVerticalAlignment("middle");
-    dashboard.getRange("D" + filaProg).setValue(prog.facultad).setFontSize(8).setVerticalAlignment("middle");
+    dashboard.getRange("D" + filaProg).setValue(prog.facultad).setFontSize(8);
     dashboard.getRange("E" + filaProg).setValue(prog.color)
       .setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center")
       .setBackground(colorHex);
@@ -1497,40 +1480,39 @@ function crearDashboardNativo() {
     filaProg++;
   }
   if (progList.length > 0) {
-    dashboard.getRange("A23:F" + (filaProg - 1))
+    dashboard.getRange("A" + hdrRow + ":F" + (filaProg - 1))
       .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  // Tabla Perfiles (columnas H-J)
-  dashboard.getRange("H23").setValue("Perfil del Cargo");
-  dashboard.getRange("I23:J23").merge().setValue("Candidatos");
-  dashboard.getRange("H23:J23")
+  // Tabla Perfiles
+  dashboard.getRange("H" + hdrRow).setValue("Perfil del Cargo");
+  dashboard.getRange("I" + hdrRow + ":J" + hdrRow).merge().setValue("Candidatos");
+  dashboard.getRange("H" + hdrRow + ":J" + hdrRow)
     .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
     .setHorizontalAlignment("center").setVerticalAlignment("middle");
 
   var perfList = stats.por_perfil;
-  var filaPerf = 24;
   var maxPerf  = 1;
   perfList.forEach(function(p) { if (p.count > maxPerf) maxPerf = p.count; });
 
+  var filaPerf = hdrRow + 1;
   for (var pf = 0; pf < perfList.length; pf++) {
     var perf = perfList[pf];
     dashboard.getRange("H" + filaPerf).setValue(perf.perfil).setFontSize(9);
-    dashboard.getRange("I" + filaPerf + ":J" + filaPerf).merge()
-      .setValue(perf.count).setFontWeight("bold").setFontSize(9)
-      .setHorizontalAlignment("center");
-    // Minibarra con SPARKLINE dentro de la celda
-    var bPerf = '=SPARKLINE({' + perf.count + ';' + (maxPerf - perf.count) + '},{"charttype","bar";"color1","' + HDARK + '";"color2","#e2e8f0";"max",' + maxPerf + '})';
-    dashboard.getRange("I" + filaPerf + ":J" + filaPerf).merge().setFormula(bPerf);
+    var restoP = maxPerf - perf.count;
+    dashboard.getRange("I" + filaPerf + ":J" + filaPerf).merge().setFormula(
+      '=SPARKLINE({' + perf.count + ',' + restoP + '},' +
+      '{"charttype","bar";"color1","' + HDARK + '";"color2","#e2e8f0"})'
+    );
     dashboard.setRowHeight(filaPerf, 20);
     filaPerf++;
   }
   if (perfList.length > 0) {
-    dashboard.getRange("H23:J" + (filaPerf - 1))
+    dashboard.getRange("H" + hdrRow + ":J" + (filaPerf - 1))
       .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  // ── 5. TENDENCIA DIARIA ────────────────────────────────────────────
+  // ── 5. TENDENCIA DIARIA ──────────────────────────────────────────────
   var diasData = stats.ingresos_por_dia;
   if (diasData && diasData.length > 0) {
     var trendStartRow = Math.max(filaProg, filaPerf) + 2;
@@ -1540,26 +1522,21 @@ function crearDashboardNativo() {
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
     dashboard.setRowHeight(trendStartRow, 28);
 
-    // Cabeceras tabla
     var tblRow = trendStartRow + 2;
+
+    // Cabeceras
     dashboard.getRange("A" + tblRow + ":B" + tblRow).merge().setValue("Fecha")
       .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
       .setHorizontalAlignment("center");
-    dashboard.getRange("C" + tblRow).setValue("Candidatos")
+    dashboard.getRange("C" + tblRow).setValue("Inscritos")
       .setBackground("#e2e8f0").setFontColor("#1e293b").setFontWeight("bold").setFontSize(9)
       .setHorizontalAlignment("center");
+    dashboard.setRowHeight(tblRow, 20);
 
-    // Construir formula SPARKLINE de linea con todos los valores
-    var diasVals = diasData.map(function(d) { return d.count; });
-    var barStr = diasVals.join(";");
+    // Datos de tabla
+    var maxDia = 1;
+    diasData.forEach(function(d) { if (d.count > maxDia) maxDia = d.count; });
 
-    // Grafico de columnas con SPARKLINE de barras
-    var trendChart = '=SPARKLINE({' + barStr + '},{"charttype","column";"color","' + GOLD + '"})';
-    dashboard.getRange("D" + tblRow + ":J" + (tblRow + diasData.length)).merge()
-      .setFormula(trendChart);
-
-    // Tabla de fechas y valores
-    var maxDia = Math.max.apply(null, diasVals) || 1;
     for (var d = 0; d < diasData.length; d++) {
       var dr = tblRow + 1 + d;
       dashboard.getRange("A" + dr + ":B" + dr).merge().setValue(diasData[d].fecha)
@@ -1571,6 +1548,12 @@ function crearDashboardNativo() {
     }
     dashboard.getRange("A" + tblRow + ":C" + (tblRow + diasData.length))
       .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+
+    // Sparkline columnas para el grafico de tendencia diaria
+    var diasVals = diasData.map(function(d) { return d.count; }).join(",");
+    dashboard.getRange("D" + tblRow + ":J" + (tblRow + diasData.length)).merge().setFormula(
+      '=SPARKLINE({' + diasVals + '},{"charttype","column";"color","' + GOLD + '"})'
+    );
   }
 }
 
