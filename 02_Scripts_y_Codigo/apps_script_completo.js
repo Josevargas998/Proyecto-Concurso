@@ -1146,6 +1146,15 @@ function actualizarHojaResumen() {
     var idx = {};
     filas.forEach(function(f) {
       var ced = String(f[campoCedula] || "").trim();
+      if (!ced) {
+        // Fallback robusto por si el nombre de la columna es distinto
+        for (var k in f) {
+          if (k.indexOf("cedul") >= 0 || k.indexOf("cédul") >= 0 || k.indexOf("documento") >= 0) {
+            ced = String(f[k] || "").trim();
+            if (ced) break;
+          }
+        }
+      }
       if (ced) idx[ced] = f; // mantiene el último si hay duplicados
     });
     return idx;
