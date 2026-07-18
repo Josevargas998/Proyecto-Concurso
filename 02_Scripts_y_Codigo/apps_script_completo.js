@@ -1313,6 +1313,7 @@ function actualizarHojaResumen() {
   try {
     crearDashboardNativo();
   } catch(exDash) {
+    SpreadsheetApp.getUi().alert("❌ Error al generar el Dashboard:\n" + exDash.toString() + (exDash.lineNumber ? "\nEn la linea: " + exDash.lineNumber : ""));
     Logger.log("Error al crear Dashboard: " + exDash);
   }
 
