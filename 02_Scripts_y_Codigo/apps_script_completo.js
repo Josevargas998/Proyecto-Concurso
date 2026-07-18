@@ -1131,7 +1131,18 @@ function actualizarHojaResumen() {
     var data = sh.getRange(2, 1, last - 1, cols).getValues();
     return data.map(function(row) {
       var obj = {};
-      enc.forEach(function(h, i) { obj[String(h).toLowerCase().trim()] = row[i]; });
+      enc.forEach(function(h, i) {
+        var key = String(h).toLowerCase().trim();
+        var val = row[i];
+        // Si el campo ya tiene un valor válido (no vacío), no dejar que una columna duplicada vacía lo borre
+        if (obj[key] !== undefined && obj[key] !== "") {
+          if (val !== undefined && val !== null && String(val).trim() !== "") {
+            obj[key] = val;
+          }
+        } else {
+          obj[key] = (val !== undefined && val !== null) ? val : "";
+        }
+      });
       return obj;
     });
   }
