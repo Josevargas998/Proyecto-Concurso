@@ -242,12 +242,12 @@ function probarValidacionHabilitantes() {
     "Certificados disciplinarios"
   ];
 
-  // Datos simulados: CUMPLE en los 11 obligatorios, NO CUMPLE en los 6 opcionales
+  // Datos simulados: NO CUMPLE en (d) (Posgrado), CUMPLE en el resto
   var datosSimulados = {
     "(a) Formato de inscripcion": "CUMPLE",
     "(b) Hoja de Vida UQ": "CUMPLE",
     "(c) Fotocopia del titulo de pregrado": "CUMPLE",
-    "(d) Fotocopia de titulos": "CUMPLE",
+    "(d) Fotocopia de titulos": "NO CUMPLE", // ❌ Falta Posgrado Obligatorio
     "(e) Fotocopia de la cedula": "CUMPLE",
     "(f) Fotocopia de matricula": "CUMPLE",
     "(g) Certificado de inhabilidades": "CUMPLE",
@@ -255,30 +255,31 @@ function probarValidacionHabilitantes() {
     "(i) Certificacion de experiencia especifica": "CUMPLE",
     "(m) Certificacion de experiencia profesional": "CUMPLE",
     "Certificados disciplinarios": "CUMPLE",
-    // 6 Opcionales / Evaluables en NO CUMPLE:
-    "(j) Certificacion de experiencia en investigacion": "NO CUMPLE",
-    "(k) Certificacion de experiencia en extension": "NO CUMPLE",
-    "(l) Certificacion de experiencia en cargos": "NO CUMPLE",
-    "(n) Certificacion de idiomas": "NO CUMPLE",
-    "Documentos debidamente foliados": "NO CUMPLE",
-    "Certificado TIC": "NO CUMPLE"
+    // 6 Opcionales en CUMPLE:
+    "(j) Certificacion de experiencia en investigacion": "CUMPLE",
+    "(k) Certificacion de experiencia en extension": "CUMPLE",
+    "(l) Certificacion de experiencia en cargos": "CUMPLE",
+    "(n) Certificacion de idiomas": "CUMPLE",
+    "Documentos debidamente foliados": "CUMPLE",
+    "Certificado TIC": "CUMPLE"
   };
 
   var todosHabilitantesCumplen = true;
+  var faltanteHabilitante = "";
   for (var h = 0; h < reqHabilitantes.length; h++) {
     var valH = (datosSimulados[reqHabilitantes[h]] || "").toUpperCase();
     if (valH.indexOf("NO CUMPLE") >= 0 || valH.indexOf("PENDIENTE") >= 0 || valH === "") {
       todosHabilitantesCumplen = false;
+      faltanteHabilitante = reqHabilitantes[h];
       break;
     }
   }
 
-  Logger.log("================ RESULTADO DE LA PRUEBA ================");
-  Logger.log("Obligatorios probados: 11 / 11 en CUMPLE");
-  Logger.log("Opcionales probados: 6 / 6 en NO CUMPLE (j, k, l, n, foliados, TIC)");
-  Logger.log("¿Pasa la validación de Habilitantes?: " + (todosHabilitantesCumplen ? "✅ SÍ CUMPLE (APROBADO)" : "❌ NO CUMPLE (RECHAZADO)"));
-  Logger.log("¿Genera enlace al Formulario 3?: " + (todosHabilitantesCumplen ? "✅ SÍ GENERARÍA ENLACE F3" : "❌ N/A"));
-  Logger.log("========================================================");
+  Logger.log("================ RESULTADO DE LA PRUEBA (FALLO EN ITEM d) ================");
+  Logger.log("Item obligatorio (d) Fotocopia de posgrado: NO CUMPLE ❌");
+  Logger.log("¿Pasa la validación de Habilitantes?: " + (todosHabilitantesCumplen ? "✅ SÍ CUMPLE" : "❌ NO CUMPLE (RECHAZADO POR: " + faltanteHabilitante + ")"));
+  Logger.log("¿Genera enlace al Formulario 3?: " + (todosHabilitantesCumplen ? "✅ SÍ GENERARÍA ENLACE F3" : "❌ N/A - No cumple requisitos habilitantes"));
+  Logger.log("==========================================================================");
 }
 
 // =====================================================================
