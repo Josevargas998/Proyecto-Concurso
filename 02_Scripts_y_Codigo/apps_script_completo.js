@@ -224,6 +224,64 @@ function debugF2Columnas() {
 }
 
 // =====================================================================
+// PRUEBA DE CÓDIGO: Simula evaluación de requisitos habilitantes
+// Validar que un candidato con fallos en j, k, l, n, foliados, TIC pase como CUMPLE
+// =====================================================================
+function probarValidacionHabilitantes() {
+  var reqHabilitantes = [
+    "(a) Formato de inscripcion",
+    "(b) Hoja de Vida UQ",
+    "(c) Fotocopia del titulo de pregrado",
+    "(d) Fotocopia de titulos",
+    "(e) Fotocopia de la cedula",
+    "(f) Fotocopia de matricula",
+    "(g) Certificado de inhabilidades",
+    "(h) Certificado de registro",
+    "(i) Certificacion de experiencia especifica",
+    "(m) Certificacion de experiencia profesional",
+    "Certificados disciplinarios"
+  ];
+
+  // Datos simulados: CUMPLE en los 11 obligatorios, NO CUMPLE en los 6 opcionales
+  var datosSimulados = {
+    "(a) Formato de inscripcion": "CUMPLE",
+    "(b) Hoja de Vida UQ": "CUMPLE",
+    "(c) Fotocopia del titulo de pregrado": "CUMPLE",
+    "(d) Fotocopia de titulos": "CUMPLE",
+    "(e) Fotocopia de la cedula": "CUMPLE",
+    "(f) Fotocopia de matricula": "CUMPLE",
+    "(g) Certificado de inhabilidades": "CUMPLE",
+    "(h) Certificado de registro": "CUMPLE",
+    "(i) Certificacion de experiencia especifica": "CUMPLE",
+    "(m) Certificacion de experiencia profesional": "CUMPLE",
+    "Certificados disciplinarios": "CUMPLE",
+    // 6 Opcionales / Evaluables en NO CUMPLE:
+    "(j) Certificacion de experiencia en investigacion": "NO CUMPLE",
+    "(k) Certificacion de experiencia en extension": "NO CUMPLE",
+    "(l) Certificacion de experiencia en cargos": "NO CUMPLE",
+    "(n) Certificacion de idiomas": "NO CUMPLE",
+    "Documentos debidamente foliados": "NO CUMPLE",
+    "Certificado TIC": "NO CUMPLE"
+  };
+
+  var todosHabilitantesCumplen = true;
+  for (var h = 0; h < reqHabilitantes.length; h++) {
+    var valH = (datosSimulados[reqHabilitantes[h]] || "").toUpperCase();
+    if (valH.indexOf("NO CUMPLE") >= 0 || valH.indexOf("PENDIENTE") >= 0 || valH === "") {
+      todosHabilitantesCumplen = false;
+      break;
+    }
+  }
+
+  Logger.log("================ RESULTADO DE LA PRUEBA ================");
+  Logger.log("Obligatorios probados: 11 / 11 en CUMPLE");
+  Logger.log("Opcionales probados: 6 / 6 en NO CUMPLE (j, k, l, n, foliados, TIC)");
+  Logger.log("¿Pasa la validación de Habilitantes?: " + (todosHabilitantesCumplen ? "✅ SÍ CUMPLE (APROBADO)" : "❌ NO CUMPLE (RECHAZADO)"));
+  Logger.log("¿Genera enlace al Formulario 3?: " + (todosHabilitantesCumplen ? "✅ SÍ GENERARÍA ENLACE F3" : "❌ N/A"));
+  Logger.log("========================================================");
+}
+
+// =====================================================================
 // FORMULARIO 2: VERIFICACION DE REQUISITOS
 // Copia la plantilla Google Doc (TPL_FORM2_ID) y llena los datos.
 // Los logos y el formato se preservan automaticamente.
