@@ -477,13 +477,13 @@ function compartirArchivo(fileId) {
   try {
     var file = DriveApp.getFileById(fileId);
 
-    // 1. Permitir que cualquiera con el enlace pueda ver
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Acceso RESTRINGIDO: solo personas específicas pueden ver/editar.
+    // NO se comparte con cualquiera que tenga el enlace.
+    file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
-    // 2. Obtener editores de la hoja y agregarlos como editores al documento
-    //    SIN enviar notificación por correo (sendNotificationEmails: false)
-    //    para no llenar de spam el buzón de los compañeros.
-    //    REQUIERE: Drive API habilitado en Servicios avanzados del proyecto.
+    // Obtener editores de la hoja y agregarlos como editores al documento
+    // SIN enviar notificación por correo (sendNotificationEmails: false).
+    // REQUIERE: Drive API habilitado en Servicios avanzados del proyecto.
     var ss = SpreadsheetApp.openById(SS_ID);
     var editores = ss.getEditors();
     editores.forEach(function(editor) {
