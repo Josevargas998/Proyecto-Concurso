@@ -11,6 +11,8 @@ var FORM_IDS = {
   4: "1A-YFD_8xGqwe-Dh3viMGerN6_Uj2agPRR_X8KuIwJlA"
 };
 
+var CARPETA_DESTINO_ID = "1EGIm0oC03hxNJoQjWlMTIkPmyYPf-CZa"; // Carpeta compartida central (Hereda permisos sin spam)
+
 
 // Helper para mostrar alertas en pantalla si hay interfaz grafica activa, o registrar en logs si es segundo plano
 function safeAlert(msg) {
@@ -477,37 +479,18 @@ function compartirArchivo(fileId) {
   try {
     var file = DriveApp.getFileById(fileId);
 
-    // Acceso RESTRINGIDO: solo personas específicas pueden ver/editar.
-    // NO se comparte con cualquiera que tenga el enlace.
-    file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
-
-    // Obtener editores de la hoja y agregarlos como editores al documento
-    // SIN enviar notificación por correo (sendNotificationEmails: false).
-    // REQUIERE: Drive API habilitado en Servicios avanzados del proyecto.
-    var ss = SpreadsheetApp.openById(SS_ID);
-    var editores = ss.getEditors();
-    editores.forEach(function(editor) {
+    // Mover archivo a la carpeta compartida oficial
+    if (CARPETA_DESTINO_ID) {
       try {
-        Drive.Permissions.insert(
-          {
-            role: 'writer',
-            type: 'user',
-            value: editor.getEmail()
-          },
-          fileId,
-          { sendNotificationEmails: false }
-        );
-      } catch(errEditor) {
-        // Fallback: si Drive API no está habilitado, usar el método básico
-        try {
-          file.addEditor(editor.getEmail());
-        } catch(e2) {
-          Logger.log("No se pudo agregar editor " + editor.getEmail() + ": " + e2);
-        }
+        var destino = DriveApp.getFolderById(CARPETA_DESTINO_ID);
+        file.moveTo(destino);
+        Logger.log("Archivo " + fileId + " movido a la carpeta compartida.");
+      } catch(errMove) {
+        Logger.log("No se pudo mover archivo a la carpeta destino: " + errMove);
       }
-    });
+    }
   } catch(e) {
-    Logger.log("Error al compartir archivo " + fileId + ": " + e);
+    Logger.log("Error al procesar archivo " + fileId + ": " + e);
   }
 }
 
