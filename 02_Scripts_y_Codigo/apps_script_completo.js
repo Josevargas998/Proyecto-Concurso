@@ -56,10 +56,10 @@ var GLOBAL_PROG_FACULTAD = {
 // =====================================================================
 var SEMAFORO_FACULTAD = {
   "FACULTAD DE CIENCIAS DE LA EDUCACION": {
-    sheetBg: "#d8f3dc",      // Verde Claro Pastel
-    headerBg: "#2d6a4f",     // Verde Oscuro
-    headerMedBg: "#52796f",  // Verde Medio
-    text: "VERDE"
+    sheetBg: "#e8dbfc",      // Morado/Lila Claro Pastel
+    headerBg: "#7209b7",     // Morado Oscuro
+    headerMedBg: "#b5179e",  // Morado Medio
+    text: "MORADO"
   },
   "FACULTAD DE INGENIERIA": {
     sheetBg: "#caf0f8",      // Azul Claro Pastel
@@ -68,26 +68,26 @@ var SEMAFORO_FACULTAD = {
     text: "AZUL"
   },
   "FACULTAD DE CIENCIAS DE LA SALUD": {
-    sheetBg: "#ffccd5",      // Rojo/Rosa Claro Pastel
-    headerBg: "#c9184a",     // Rojo Oscuro
-    headerMedBg: "#ff4d6d",  // Rojo/Rosa Fuerte
-    text: "ROJO"
+    sheetBg: "#ffe5ec",      // Rosa Claro Pastel
+    headerBg: "#db2777",     // Rosa Fuerte
+    headerMedBg: "#f472b6",  // Rosa Medio
+    text: "ROSADO"
   },
   "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES": {
-    sheetBg: "#ffe5ec",      // Naranja/Salmón Suave Pastel
-    headerBg: "#ff7096",     // Rosa/Naranja Fuerte
-    headerMedBg: "#ff85a1",  // Naranja Medio
+    sheetBg: "#ffedd5",      // Naranja Claro Pastel
+    headerBg: "#c2410c",     // Naranja Oscuro
+    headerMedBg: "#f97316",  // Naranja Medio
     text: "NARANJA"
   },
   "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS": {
-    sheetBg: "#e8dbfc",      // Morado/Lila Claro Pastel
-    headerBg: "#7209b7",     // Morado Fuerte
-    headerMedBg: "#b5179e",  // Morado/Magenta Medio
-    text: "MORADO"
+    sheetBg: "#d8f3dc",      // Verde Claro Pastel
+    headerBg: "#2d6a4f",     // Verde Oscuro
+    headerMedBg: "#52796f",  // Verde Medio
+    text: "VERDE"
   },
   "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS": {
     sheetBg: "#fefae0",      // Amarillo Crema Pastel
-    headerBg: "#d4a373",     // Cafe/Ocre Claro
+    headerBg: "#d4a373",     // Café/Ocre Claro
     headerMedBg: "#e9c46a",  // Amarillo/Dorado
     text: "AMARILLO"
   }
