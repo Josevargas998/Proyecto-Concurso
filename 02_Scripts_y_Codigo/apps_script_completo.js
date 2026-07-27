@@ -305,7 +305,7 @@ function onFormSubmit_F2(e) {
       { cumpleKey: "(c) Fotocopia del titulo de pregrado",    obsKey: "Titulo Pregrado" },
       { cumpleKey: "(d) Fotocopia de titulos o actas de grado de posgrado", obsKey: "Titulo Posgrado" },
       { cumpleKey: "(e) Fotocopia de la cedula",              obsKey: "Cedula" },
-      { cumpleKey: "(f) Fotocopia de matricula",              obsKey: "matricula o tarjeta" },
+      { cumpleKey: "(f) Fotocopia de matricula",              obsKey: "tarjeta profesional" },
       { cumpleKey: "(g) Certificado de inhabilidades por delitos", obsKey: "delitos" },
       { cumpleKey: "(h) Certificado de registro de deudores", obsKey: "deudores" },
       { cumpleKey: "(i) Certificacion de experiencia especifica en docencia", obsKey: "docencia" },
