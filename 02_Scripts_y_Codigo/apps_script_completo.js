@@ -237,9 +237,36 @@ function onFormSubmit_F2(e) {
     var perfil   = d.safe("Perfil del Cargo");
     var obsGen        = d.safe("Observaciones Generales");
     var conceptoFinal = d.safe("Concepto Final");
-    // El concepto final lo decide el evaluador en el formulario
-    // SI el concepto contiene "CUMPLE CON TODOS" → tabla final = SI, de lo contrario NO
-    var cumpleTodos = conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0;
+
+    // ── EVALUACIÓN AUTOMÁTICA DE REQUISITOS HABILITANTES ─────────────
+    // Requisitos obligatorios habilitantes (si falta uno → NO CUMPLE)
+    var reqHabilitantes = [
+      "(a) Formato de inscripcion",
+      "(b) Hoja de Vida UQ",
+      "(c) Fotocopia del titulo de pregrado",
+      "(d) Fotocopia de titulos",
+      "(e) Fotocopia de la cedula",
+      "(f) Fotocopia de matricula",
+      "(g) Certificado de inhabilidades",
+      "(h) Certificado de registro",
+      "(i) Certificacion de experiencia especifica",
+      "(m) Certificacion de experiencia profesional",
+      "Certificados disciplinarios"
+    ];
+
+    // Verificar si todos los habilitantes están en CUMPLE
+    var todosHabilitantesCumplen = true;
+    for (var h = 0; h < reqHabilitantes.length; h++) {
+      var valH = d.safe(reqHabilitantes[h]).toUpperCase();
+      if (valH.indexOf("NO CUMPLE") >= 0 || valH.indexOf("PENDIENTE") >= 0 || valH === "") {
+        todosHabilitantesCumplen = false;
+        break;
+      }
+    }
+
+    // SI todos los habilitantes cumplen → CUMPLE CON TODOS LOS REQUISITOS HABILITANTES
+    // O si el evaluador seleccionó explicitamente "CUMPLE CON TODOS"
+    var cumpleTodos = todosHabilitantesCumplen || (conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0);
 
     // Buscar la facultad correcta segun el nombre del programa
     function getFacultad(nombrePrograma) {
