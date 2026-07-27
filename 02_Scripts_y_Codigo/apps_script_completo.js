@@ -315,7 +315,8 @@ function onFormSubmit_F2(e) {
       { cumpleKey: "(m) Certificacion de experiencia profesional", obsKey: "experiencia profesional diferente" },
       { cumpleKey: "(n) Certificacion de suficiencia linguistica", obsKey: "linguistica" },
       { cumpleKey: "Documentos debidamente foliados",          obsKey: "foliados" },
-      { cumpleKey: "5. Certificados disciplinarios",           obsKey: "disciplinarios" }
+      { cumpleKey: "5. Certificados disciplinarios",           obsKey: "disciplinarios" },
+      { cumpleKey: "Certificado TIC",                          obsKey: "TIC" }
     ];
 
     var tables = body.getTables();
@@ -1885,6 +1886,15 @@ function agregarPreguntasFaltantesF2() {
     {
       tipo: "TXT",
       titulo: "Observaciones - Certificacion de experiencia en cargos"
+    },
+    {
+      tipo: "MC",
+      titulo: "Certificado TIC (Competencias en TIC para Docentes)",
+      opciones: ["CUMPLE", "NO CUMPLE", "PENDIENTE - Requiere revision"]
+    },
+    {
+      tipo: "TXT",
+      titulo: "Observaciones - Certificado TIC"
     }
   ];
 
@@ -1962,6 +1972,8 @@ function reordenarFormulario2() {
     "Documentos debidamente foliados",
     "5. Certificados disciplinarios",
     "Observaciones - Certificados disciplinarios",
+    "Certificado TIC",
+    "Observaciones - Certificado TIC",
     "Concepto Final",
     "Observaciones Generales"
   ];
