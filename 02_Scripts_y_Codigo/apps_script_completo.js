@@ -323,9 +323,10 @@ function onFormSubmit_F2(e) {
       }
     }
 
-    // SI todos los habilitantes cumplen → CUMPLE CON TODOS LOS REQUISITOS HABILITANTES
-    // O si el evaluador seleccionó explicitamente "CUMPLE CON TODOS"
-    var cumpleTodos = todosHabilitantesCumplen || (conceptoFinal.toUpperCase().indexOf("CUMPLE CON TODOS") >= 0);
+    // REGLA ESTRICTA DE HABILITANTES:
+    // Si falla en CUALQUIERA de los 11 obligatorios (a,b,c,d,e,f,g,h,i,m,disciplinarios) → cumpleTodos es FALSE (X en NO).
+    // Si cumple los 11 obligatorios → cumpleTodos es TRUE (X en SI), ignorando los 6 opcionales (j,k,l,n,foliados,TIC).
+    var cumpleTodos = todosHabilitantesCumplen;
 
     // Buscar la facultad correcta segun el nombre del programa
     function getFacultad(nombrePrograma) {
