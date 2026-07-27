@@ -1850,6 +1850,70 @@ function actualizarPlantillaF2() {
 }
 
 // =====================================================================
+// AGREGAR FILA TIC EN PLANTILLA F2 — Ejecutar UNA SOLA VEZ
+// Agrega la fila "Certificado TIC" al final de la tabla de requisitos
+// en el documento plantilla del Formulario 2.
+// =====================================================================
+function agregarFilaTICEnPlantilla() {
+  try {
+    var doc  = DocumentApp.openById(TPL_FORM2_ID);
+    var body = doc.getBody();
+    var tables = body.getTables();
+
+    // Buscar la tabla principal de requisitos (la que tiene >= 10 filas y >= 3 columnas)
+    var reqTable = null;
+    for (var t = 0; t < tables.length; t++) {
+      if (tables[t].getNumRows() >= 10 && tables[t].getRow(0).getNumCells() >= 3) {
+        reqTable = tables[t];
+        break;
+      }
+    }
+
+    if (!reqTable) {
+      safeAlert("No se encontró la tabla de requisitos en la plantilla.");
+      return;
+    }
+
+    // Verificar si la fila TIC ya existe para no duplicar
+    for (var r = 0; r < reqTable.getNumRows(); r++) {
+      if (reqTable.getRow(r).getCell(0).getText().toLowerCase().indexOf("tic") >= 0) {
+        safeAlert("La fila de Certificado TIC ya existe en la plantilla.");
+        return;
+      }
+    }
+
+    // Copiar el estilo de la última fila de datos como referencia
+    var ultimaFila = reqTable.getNumRows() - 1;
+    var nuevaFila  = reqTable.insertTableRow(ultimaFila);
+
+    // Celda 0: Texto del requisito
+    var celTxt = nuevaFila.appendTableCell("Certificado TIC (Competencias en TIC para Docentes)");
+    celTxt.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
+    celTxt.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.LEFT);
+    celTxt.setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(4).setPaddingRight(4);
+    celTxt.setBorderColor("#000000").setBorderWidth(1);
+
+    // Celda 1: Observaciones (vacío)
+    var celObs = nuevaFila.appendTableCell("");
+    celObs.editAsText().setFontFamily("Arial").setFontSize(9).setBold(false);
+    celObs.setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(4).setPaddingRight(4);
+    celObs.setBorderColor("#000000").setBorderWidth(1);
+
+    // Celda 2: Cumple (vacío, se llenará al generar)
+    var celCump = nuevaFila.appendTableCell("");
+    celCump.editAsText().setFontFamily("Arial").setFontSize(10).setBold(true);
+    celCump.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    celCump.setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(4).setPaddingRight(4);
+    celCump.setBorderColor("#000000").setBorderWidth(1);
+
+    doc.saveAndClose();
+    safeAlert("✅ Fila 'Certificado TIC' agregada correctamente a la plantilla del Formulario 2.");
+  } catch(err) {
+    safeAlert("Error al agregar la fila TIC: " + err);
+  }
+}
+
+// =====================================================================
 // AGREGAR PREGUNTAS FALTANTES EN EL FORMULARIO 2 (j, k, l)
 // Ejecutar una sola vez. Busca si existen las preguntas para (j), (k), (l)
 // en el formulario y si no existen, las crea automáticamente.
