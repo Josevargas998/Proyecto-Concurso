@@ -80,14 +80,14 @@ var SEMAFORO_FACULTAD = {
     text: "NARANJA"
   },
   "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS": {
-    sheetBg: "#d8f3dc",      // Verde Claro Pastel
-    headerBg: "#2d6a4f",     // Verde Oscuro
-    headerMedBg: "#52796f",  // Verde Medio
-    text: "VERDE"
+    sheetBg: "#f5ebe0",      // Café/Crema Claro Pastel
+    headerBg: "#7f4f24",     // Café Oscuro
+    headerMedBg: "#936639",  // Café Medio
+    text: "CAFE"
   },
   "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS": {
     sheetBg: "#fefae0",      // Amarillo Crema Pastel
-    headerBg: "#d4a373",     // Café/Ocre Claro
+    headerBg: "#b5838d",     // Ocre/Dorado Oscuro
     headerMedBg: "#e9c46a",  // Amarillo/Dorado
     text: "AMARILLO"
   }
