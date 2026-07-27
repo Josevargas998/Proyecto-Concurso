@@ -567,18 +567,44 @@ function compartirArchivo(fileId) {
   try {
     var file = DriveApp.getFileById(fileId);
 
-    // Mover archivo a la carpeta compartida oficial
+    // 1. Mover el archivo a la carpeta compartida oficial
     if (CARPETA_DESTINO_ID) {
       try {
         var destino = DriveApp.getFolderById(CARPETA_DESTINO_ID);
         file.moveTo(destino);
-        Logger.log("Archivo " + fileId + " movido a la carpeta compartida.");
       } catch(errMove) {
         Logger.log("No se pudo mover archivo a la carpeta destino: " + errMove);
       }
     }
+
+    // 2. Otorgar permisos de EDITOR explícitos a todos los editores de la hoja
+    //    usando Drive API en MODO SILENCIOSO (sendNotificationEmails: false).
+    //    Esto GARANTIZA que tus compañeros puedan editar de inmediato SIN PEDIR PERMISOS
+    //    y SIN RECIBIR SPAM POR CORREO.
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var editores = ss.getEditors();
+    editores.forEach(function(editor) {
+      try {
+        Drive.Permissions.insert(
+          {
+            role: 'writer',
+            type: 'user',
+            value: editor.getEmail()
+          },
+          fileId,
+          { sendNotificationEmails: false }
+        );
+      } catch(errEditor) {
+        // Fallback en caso de contingencia
+        try {
+          file.addEditor(editor.getEmail());
+        } catch(e2) {
+          Logger.log("No se pudo agregar editor " + editor.getEmail() + ": " + e2);
+        }
+      }
+    });
   } catch(e) {
-    Logger.log("Error al procesar archivo " + fileId + ": " + e);
+    Logger.log("Error al compartir archivo " + fileId + ": " + e);
   }
 }
 
