@@ -476,18 +476,34 @@ function extraerPuntaje(textoOpcion) {
 function compartirArchivo(fileId) {
   try {
     var file = DriveApp.getFileById(fileId);
-    
+
     // 1. Permitir que cualquiera con el enlace pueda ver
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    // 2. Obtener editores de la hoja de cálculo principal y agregarlos como editores al documento
+
+    // 2. Obtener editores de la hoja y agregarlos como editores al documento
+    //    SIN enviar notificación por correo (sendNotificationEmails: false)
+    //    para no llenar de spam el buzón de los compañeros.
+    //    REQUIERE: Drive API habilitado en Servicios avanzados del proyecto.
     var ss = SpreadsheetApp.openById(SS_ID);
     var editores = ss.getEditors();
     editores.forEach(function(editor) {
       try {
-        file.addEditor(editor);
+        Drive.Permissions.insert(
+          {
+            role: 'writer',
+            type: 'user',
+            value: editor.getEmail()
+          },
+          fileId,
+          { sendNotificationEmails: false }
+        );
       } catch(errEditor) {
-        Logger.log("No se pudo agregar editor " + editor.getEmail() + ": " + errEditor);
+        // Fallback: si Drive API no está habilitado, usar el método básico
+        try {
+          file.addEditor(editor.getEmail());
+        } catch(e2) {
+          Logger.log("No se pudo agregar editor " + editor.getEmail() + ": " + e2);
+        }
       }
     });
   } catch(e) {
