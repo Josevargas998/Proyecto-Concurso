@@ -52,84 +52,30 @@ var GLOBAL_PROG_FACULTAD = {
 };
 
 // =====================================================================
-// SEMAFORO DE COLORES POR FACULTADES (ESTANTERIA FISICA & DIGITAL)
+// SEMÁFORO DE CUMPLIMIENTO F2 (VERDE / ROJO)
 // =====================================================================
-var SEMAFORO_FACULTAD = {
-  "FACULTAD DE CIENCIAS DE LA EDUCACION": {
-    sheetBg: "#e8dbfc",      // Morado/Lila Claro Pastel
-    headerBg: "#7209b7",     // Morado Oscuro
-    headerMedBg: "#b5179e",  // Morado Medio
-    text: "MORADO"
+var SEMAFORO_CUMPLIMIENTO = {
+  cumple: {
+    sheetBg: "#d8f3dc",      // Verde Claro Pastel
+    headerBg: "#2d6a4f",     // Verde Oscuro
+    headerMedBg: "#52796f",  // Verde Medio
+    text: "VERDE (CUMPLE)"
   },
-  "FACULTAD DE INGENIERIA": {
-    sheetBg: "#caf0f8",      // Azul Claro Pastel
-    headerBg: "#0077b6",     // Azul Oscuro
-    headerMedBg: "#0096c7",  // Azul Medio
-    text: "AZUL"
-  },
-  "FACULTAD DE CIENCIAS DE LA SALUD": {
-    sheetBg: "#ffe5ec",      // Rosa Claro Pastel
-    headerBg: "#db2777",     // Rosa Fuerte
-    headerMedBg: "#f472b6",  // Rosa Medio
-    text: "ROSADO"
-  },
-  "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES": {
-    sheetBg: "#ffedd5",      // Naranja Claro Pastel
-    headerBg: "#c2410c",     // Naranja Oscuro
-    headerMedBg: "#f97316",  // Naranja Medio
-    text: "NARANJA"
-  },
-  "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS": {
-    sheetBg: "#f5ebe0",      // Café/Crema Claro Pastel
-    headerBg: "#7f4f24",     // Café Oscuro
-    headerMedBg: "#936639",  // Café Medio
-    text: "CAFE"
-  },
-  "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS": {
-    sheetBg: "#fefae0",      // Amarillo Crema Pastel
-    headerBg: "#b5838d",     // Ocre/Dorado Oscuro
-    headerMedBg: "#e9c46a",  // Amarillo/Dorado
-    text: "AMARILLO"
+  noCumple: {
+    sheetBg: "#ffccd5",      // Rojo/Rosa Claro Pastel
+    headerBg: "#c9184a",     // Rojo Oscuro
+    headerMedBg: "#ff4d6d",  // Rojo/Rosa Fuerte
+    text: "ROJO (NO CUMPLE)"
   }
 };
 
-// Obtiene los datos del semáforo según el programa de concurso
-function obtenerSemaforoPrograma(nombrePrograma) {
-  var pLow = (nombrePrograma || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  var fac = "";
-  for (var clave in GLOBAL_PROG_FACULTAD) {
-    if (pLow.indexOf(clave) >= 0) {
-      fac = GLOBAL_PROG_FACULTAD[clave];
-      break;
-    }
+// Obtiene la configuración del semáforo según el resultado de cumplimiento (boolean)
+function obtenerSemaforoCumplimiento(esCumple) {
+  if (esCumple) {
+    return SEMAFORO_CUMPLIMIENTO.cumple;
+  } else {
+    return SEMAFORO_CUMPLIMIENTO.noCumple;
   }
-  
-  // Color por defecto en caso de no encontrarse
-  var semaforoDefecto = {
-    sheetBg: "#f1f3f4",      // Gris Claro
-    headerBg: "#4a4a4a",     // Gris Oscuro
-    headerMedBg: "#7a7a7a",  // Gris Medio
-    text: "GRIS"
-  };
-
-  if (fac && SEMAFORO_FACULTAD[fac]) {
-    var config = SEMAFORO_FACULTAD[fac];
-    return {
-      facultad: fac,
-      sheetBg: config.sheetBg,
-      headerBg: config.headerBg,
-      headerMedBg: config.headerMedBg,
-      colorFisico: config.text
-    };
-  }
-  
-  return {
-    facultad: fac || nombrePrograma || "DESCONOCIDA",
-    sheetBg: semaforoDefecto.sheetBg,
-    headerBg: semaforoDefecto.headerBg,
-    headerMedBg: semaforoDefecto.headerMedBg,
-    colorFisico: semaforoDefecto.text
-  };
 }
 
 // Colorea una fila del registro para la visualización del semáforo
@@ -534,16 +480,16 @@ function onFormSubmit_F2(e) {
       d.hoja.getRange(d.ult, colLinkF3).setValue("N/A - No cumple requisitos habilitantes");
     }
 
-    // ── 6. SEMÁFORO: COLOREAR FILA Y REGISTRAR COLOR FÍSICO ──
-    var semInfo = obtenerSemaforoPrograma(prog);
+    // ── 6. SEMÁFORO DE CUMPLIMIENTO: COLOREAR FILA (VERDE = CUMPLE, ROJO = NO CUMPLE) ──
+    var semInfo = obtenerSemaforoCumplimiento(cumpleTodos);
     colorearFila(d.hoja, d.ult, semInfo.sheetBg);
-    
+
     var colColorEstante = d.getColIndex("Color Estante");
     if (colColorEstante === -1) {
       colColorEstante = d.hoja.getLastColumn() + 1;
       d.hoja.getRange(1, colColorEstante).setValue("Color Estante");
     }
-    d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
+    d.hoja.getRange(d.ult, colColorEstante).setValue(semInfo.text).setFontWeight("bold").setHorizontalAlignment("center");
 
   } catch(err) { Logger.log("Error F2: " + err); }
 }
@@ -1076,7 +1022,7 @@ function onOpen() {
   ui.createMenu("Acciones Concurso")
     .addItem("Generar / Actualizar TODOS los enlaces",       "generarTodosLosEnlaces")
     .addSeparator()
-    .addItem("🎨 Colorear todo segun facultad (Semaforo)",   "colorearTodoSemaforoPorFacultad")
+    .addItem("🎨 Colorear semáforo (Verde = Cumple, Rojo = No Cumple)", "colorearTodoSemaforoCumplimiento")
     .addItem("🧹 Limpiar columnas duplicadas",               "limpiarColumnasBasura")
     .addItem("📊 Actualizar Hoja Resumen de Candidatos",     "actualizarHojaResumen")
     .addItem("🔓 Compartir todos los docs con editores",     "compartirTodosLosDocumentosExistentes")
@@ -1084,54 +1030,53 @@ function onOpen() {
 }
 
 // =====================================================================
-// SEMAFORO RETROACTIVO: Colorea todas las filas existentes
+// SEMÁFORO RETROACTIVO: Colorea las filas según Cumplimiento F2 (Verde / Rojo)
 // =====================================================================
-function colorearTodoSemaforoPorFacultad() {
-  var hojas = [
-    { nombre: "Respuestas de formulario 1", colProg: "programa" },
-    { nombre: "Respuestas de formulario 2", colProg: "programa" },
-    { nombre: "Respuestas de formulario 3", colProg: "programa" },
-    { nombre: "Respuestas de formulario 4", colProg: "programa academico" }
-  ];
+function colorearTodoSemaforoCumplimiento() {
   var ss = SpreadsheetApp.openById(SS_ID);
+  var f2Sheet = ss.getSheetByName("Respuestas de formulario 2");
+  if (!f2Sheet) {
+    safeAlert("No se encontró la hoja 'Respuestas de formulario 2'.");
+    return;
+  }
+
+  var lastRow = f2Sheet.getLastRow();
+  var lastCol = f2Sheet.getLastColumn();
+  if (lastRow < 2) return;
+
+  var headers = f2Sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  
+  // Buscar columna de Formulario 3 para saber si cumplió o no
+  var colF3 = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).toLowerCase().indexOf("formulario 3") >= 0) { colF3 = i; break; }
+  }
+
+  // Buscar o crear columna "Color Estante"
+  var colEstante = -1;
+  for (var j = 0; j < headers.length; j++) {
+    if (String(headers[j]).toLowerCase() === "color estante") { colEstante = j + 1; break; }
+  }
+  if (colEstante === -1) {
+    colEstante = lastCol + 1;
+    f2Sheet.getRange(1, colEstante).setValue("Color Estante");
+  }
+
+  var datos = f2Sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var total = 0;
 
-  hojas.forEach(function(h) {
-    var sheet = ss.getSheetByName(h.nombre);
-    if (!sheet) return;
-    var lastRow = sheet.getLastRow();
-    var lastCol = sheet.getLastColumn();
-    if (lastRow < 2) return;
+  for (var r = 0; r < datos.length; r++) {
+    var valF3 = colF3 >= 0 ? String(datos[r][colF3] || "") : "";
+    // Si tiene un enlace a F3 -> CUMPLE (Verde), de lo contrario -> NO CUMPLE (Rojo)
+    var esCumple = valF3.indexOf("http") >= 0;
+    var sem = obtenerSemaforoCumplimiento(esCumple);
 
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    var colProg = -1;
-    for (var i = 0; i < headers.length; i++) {
-      if (String(headers[i]).toLowerCase().indexOf(h.colProg) >= 0) { colProg = i; break; }
-    }
-    if (colProg === -1) return;
+    colorearFila(f2Sheet, r + 2, sem.sheetBg);
+    f2Sheet.getRange(r + 2, colEstante).setValue(sem.text).setFontWeight("bold").setHorizontalAlignment("center");
+    total++;
+  }
 
-    // Buscar o crear columna "Color Estante"
-    var colEstante = -1;
-    for (var j = 0; j < headers.length; j++) {
-      if (String(headers[j]).toLowerCase() === "color estante") { colEstante = j + 1; break; }
-    }
-    if (colEstante === -1) {
-      colEstante = lastCol + 1;
-      sheet.getRange(1, colEstante).setValue("Color Estante");
-    }
-
-    var datos = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-    for (var r = 0; r < datos.length; r++) {
-      var prog = String(datos[r][colProg] || "");
-      if (!prog.trim()) continue;
-      var sem = obtenerSemaforoPrograma(prog);
-      colorearFila(sheet, r + 2, sem.sheetBg);
-      sheet.getRange(r + 2, colEstante).setValue(sem.colorFisico).setFontWeight("bold").setHorizontalAlignment("center");
-      total++;
-    }
-  });
-
-  SpreadsheetApp.getUi().alert("✅ Semáforo aplicado a " + total + " filas en todas las hojas.");
+  safeAlert("✅ Semáforo aplicado: Verde (Cumple) / Rojo (No Cumple) en " + total + " filas del Formulario 2.");
 }
 
 // =====================================================================
