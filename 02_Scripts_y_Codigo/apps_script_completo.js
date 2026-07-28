@@ -1030,7 +1030,8 @@ function onOpen() {
 }
 
 // =====================================================================
-// SEMÁFORO RETROACTIVO: Colorea las filas según Cumplimiento F2 (Verde / Rojo)
+// SEMÁFORO RETROACTIVO: Colorea las filas en TODAS las hojas según F2
+// (Verde = Cumple habilitantes, Rojo = No cumple habilitantes)
 // =====================================================================
 function colorearTodoSemaforoCumplimiento() {
   var ss = SpreadsheetApp.openById(SS_ID);
@@ -1040,43 +1041,92 @@ function colorearTodoSemaforoCumplimiento() {
     return;
   }
 
-  var lastRow = f2Sheet.getLastRow();
-  var lastCol = f2Sheet.getLastColumn();
-  if (lastRow < 2) return;
-
-  var headers = f2Sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  
-  // Buscar columna de Formulario 3 para saber si cumplió o no
-  var colF3 = -1;
-  for (var i = 0; i < headers.length; i++) {
-    if (String(headers[i]).toLowerCase().indexOf("formulario 3") >= 0) { colF3 = i; break; }
+  var f2LastRow = f2Sheet.getLastRow();
+  var f2LastCol = f2Sheet.getLastColumn();
+  if (f2LastRow < 2) {
+    safeAlert("No hay datos en 'Respuestas de formulario 2'.");
+    return;
   }
 
-  // Buscar o crear columna "Color Estante"
-  var colEstante = -1;
-  for (var j = 0; j < headers.length; j++) {
-    if (String(headers[j]).toLowerCase() === "color estante") { colEstante = j + 1; break; }
-  }
-  if (colEstante === -1) {
-    colEstante = lastCol + 1;
-    f2Sheet.getRange(1, colEstante).setValue("Color Estante");
-  }
+  var f2Headers = f2Sheet.getRange(1, 1, 1, f2LastCol).getValues()[0];
+  var colCedulaF2 = -1, colF3F2 = -1;
 
-  var datos = f2Sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-  var total = 0;
-
-  for (var r = 0; r < datos.length; r++) {
-    var valF3 = colF3 >= 0 ? String(datos[r][colF3] || "") : "";
-    // Si tiene un enlace a F3 -> CUMPLE (Verde), de lo contrario -> NO CUMPLE (Rojo)
-    var esCumple = valF3.indexOf("http") >= 0;
-    var sem = obtenerSemaforoCumplimiento(esCumple);
-
-    colorearFila(f2Sheet, r + 2, sem.sheetBg);
-    f2Sheet.getRange(r + 2, colEstante).setValue(sem.text).setFontWeight("bold").setHorizontalAlignment("center");
-    total++;
+  for (var i = 0; i < f2Headers.length; i++) {
+    var h = String(f2Headers[i]).toLowerCase();
+    if (h.indexOf("cedula") >= 0) colCedulaF2 = i;
+    if (h.indexOf("formulario 3") >= 0) colF3F2 = i;
   }
 
-  safeAlert("✅ Semáforo aplicado: Verde (Cumple) / Rojo (No Cumple) en " + total + " filas del Formulario 2.");
+  // Indexar el estado de cumplimiento por Cédula desde F2
+  // Si la cédula tiene un link a Formulario 3 -> CUMPLE (Verde), de lo contrario -> NO CUMPLE (Rojo)
+  var mapaCumplimiento = {};
+  var f2Datos = f2Sheet.getRange(2, 1, f2LastRow - 1, f2LastCol).getValues();
+  for (var r = 0; r < f2Datos.length; r++) {
+    var ced = String(f2Datos[r][colCedulaF2] || "").trim();
+    var linkF3 = colF3F2 >= 0 ? String(f2Datos[r][colF3F2] || "") : "";
+    if (ced) {
+      mapaCumplimiento[ced] = linkF3.indexOf("http") >= 0;
+    }
+  }
+
+  // Lista de hojas a colorear
+  var hojas = [
+    "Respuestas de formulario 1",
+    "Respuestas de formulario 2",
+    "Respuestas de formulario 3",
+    "Respuestas de formulario 4",
+    "RESUMEN CANDIDATOS"
+  ];
+
+  var totalFilasColoreadas = 0;
+
+  hojas.forEach(function(nombreHoja) {
+    var sheet = ss.getSheetByName(nombreHoja);
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return;
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var colCed = -1;
+    for (var c = 0; c < headers.length; c++) {
+      if (String(headers[c]).toLowerCase().indexOf("cedula") >= 0) {
+        colCed = c;
+        break;
+      }
+    }
+    if (colCed === -1) return;
+
+    // Buscar o crear columna "Color Estante"
+    var colEstante = -1;
+    for (var j = 0; j < headers.length; j++) {
+      if (String(headers[j]).toLowerCase() === "color estante") { colEstante = j + 1; break; }
+    }
+    if (colEstante === -1) {
+      colEstante = lastCol + 1;
+      sheet.getRange(1, colEstante).setValue("Color Estante");
+    }
+
+    var datosSheet = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    for (var k = 0; k < datosSheet.length; k++) {
+      var cedulaRow = String(datosSheet[k][colCed] || "").trim();
+      if (!cedulaRow) continue;
+
+      // Si tenemos registro F2 para este candidato, usarlo. Si aún no tiene F2, usar Gris por defecto
+      var esCumple = mapaCumplimiento[cedulaRow];
+      if (esCumple !== undefined) {
+        var sem = obtenerSemaforoCumplimiento(esCumple);
+        colorearFila(sheet, k + 2, sem.sheetBg);
+        sheet.getRange(k + 2, colEstante).setValue(sem.text).setFontWeight("bold").setHorizontalAlignment("center");
+      } else {
+        colorearFila(sheet, k + 2, "#f1f3f4"); // Gris: pendiente F2
+        sheet.getRange(k + 2, colEstante).setValue("PENDIENTE F2").setFontWeight("bold").setHorizontalAlignment("center");
+      }
+      totalFilasColoreadas++;
+    }
+  });
+
+  safeAlert("✅ Semáforo aplicado en TODAS LAS HOJAS: " + totalFilasColoreadas + " filas coloreadas según F2 (Verde = Cumple, Rojo = No Cumple).");
 }
 
 // =====================================================================
