@@ -1617,13 +1617,8 @@ function crearDashboardNativo() {
   for (var p = 0; p < progList.length; p++) {
     var prog = progList[p];
     var colorHex = "#f8fafc";
-    if (prog.facultad) {
-      for (var fKey in SEMAFORO_FACULTAD) {
-        if (fKey.toLowerCase().indexOf((prog.facultad || "").toLowerCase()) >= 0) {
-          colorHex = SEMAFORO_FACULTAD[fKey].sheetBg;
-          break;
-        }
-      }
+    if (prog.programa) {
+      colorHex = obtenerSemaforoPrograma(prog.programa).sheetBg;
     }
     dashboard.getRange("A" + filaProg + ":C" + filaProg).merge()
       .setValue(prog.programa).setFontSize(9).setVerticalAlignment("middle");
