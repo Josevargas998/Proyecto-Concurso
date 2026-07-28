@@ -1030,6 +1030,48 @@ function onOpen() {
 }
 
 // =====================================================================
+// FACULTAD Y COLORES DE DOCUMENTOS por programa académico
+// (sheetBg es neutro — el color Verde/Rojo de las filas lo maneja F2)
+// =====================================================================
+function obtenerSemaforoPrograma(prog) {
+  var p = String(prog || "").toLowerCase();
+  var mapa = [
+    { keys: ["educacion", "licenciatura", "pedagogia", "idiomas"],
+      facultad: "FACULTAD DE CIENCIAS DE LA EDUCACION",
+      headerBg: "#4a0e8f", headerMedBg: "#7b2fbe", colorFisico: "MORADO" },
+    { keys: ["salud", "medicina", "enfermeria", "fisioterapia", "odontologia", "bacteriologia", "optometria"],
+      facultad: "FACULTAD DE CIENCIAS DE LA SALUD",
+      headerBg: "#b5006e", headerMedBg: "#e91e8c", colorFisico: "ROSADO" },
+    { keys: ["ingenieria", "sistemas", "electronica", "civil", "mecanica", "industrial"],
+      facultad: "FACULTAD DE INGENIERIA",
+      headerBg: "#0d47a1", headerMedBg: "#1976d2", colorFisico: "AZUL" },
+    { keys: ["humanidades", "bellas artes", "comunicacion", "filosofia", "sociologia", "trabajo social", "historia"],
+      facultad: "FACULTAD DE CIENCIAS HUMANAS Y BELLAS ARTES",
+      headerBg: "#e65100", headerMedBg: "#f57c00", colorFisico: "NARANJA" },
+    { keys: ["basicas", "biologia", "quimica", "fisica", "matematica", "tecnologia", "geologia"],
+      facultad: "FACULTAD DE CIENCIAS BASICAS Y TECNOLOGIAS",
+      headerBg: "#5d4037", headerMedBg: "#8d6e63", colorFisico: "CAFE" },
+    { keys: ["economica", "administrativa", "contaduria", "administracion", "finanzas", "comercio"],
+      facultad: "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS",
+      headerBg: "#f9a825", headerMedBg: "#fbc02d", colorFisico: "AMARILLO" }
+  ];
+  for (var i = 0; i < mapa.length; i++) {
+    for (var j = 0; j < mapa[i].keys.length; j++) {
+      if (p.indexOf(mapa[i].keys[j]) >= 0) {
+        return {
+          facultad:    mapa[i].facultad,
+          headerBg:    mapa[i].headerBg,
+          headerMedBg: mapa[i].headerMedBg,
+          colorFisico: mapa[i].colorFisico,
+          sheetBg:     "#f1f3f4"  // Neutro — el color lo asigna el semaforo F2
+        };
+      }
+    }
+  }
+  return { facultad: "OTRA", headerBg: "#37474f", headerMedBg: "#546e7a", colorFisico: "GRIS", sheetBg: "#f1f3f4" };
+}
+
+// =====================================================================
 // SEMÁFORO RETROACTIVO: Verde (Cumple) / Rojo (No Cumple) según F2
 // Lee la columna "Concepto Final" del Formulario 2 y colorea todas las hojas
 // =====================================================================
@@ -1345,8 +1387,9 @@ function actualizarHojaResumen() {
       } catch(e) { fechaIngreso = String(r1[tsKey]); }
     }
 
+    var _cf2 = String(r2["concepto final"] || "").toUpperCase();
     var f2Estado = Object.keys(r2).length > 0
-      ? (String(r2["concepto final"] || "").toUpperCase().indexOf("CUMPLE CON TODOS") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
+      ? (_cf2.indexOf("NO CUMPLE") < 0 && _cf2.indexOf("CUMPLE") >= 0 ? "✅ CUMPLE" : "❌ NO CUMPLE")
       : "—";
 
     // Enlace F2
@@ -1412,11 +1455,13 @@ function actualizarHojaResumen() {
   var dataRange = resumen.getRange(3, 1, filas.length, encabezados.length);
   dataRange.setValues(filas).setFontSize(9).setWrap(false).setVerticalAlignment("middle");
 
-  // Colorear filas según facultad
+  // Colorear filas según F2 Concepto Final (Verde = Cumple, Rojo = No Cumple, Gris = Sin F2)
   for (var r = 0; r < filas.length; r++) {
-    var progFila = filas[r][3];
-    var semFila  = obtenerSemaforoPrograma(progFila);
-    resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(semFila.sheetBg);
+    var f2EstadoFila = String(filas[r][8] || ""); // índice 8 = f2Estado
+    var colorFila = f2EstadoFila.indexOf("NO CUMPLE") >= 0 ? "#ffccd5" :
+                    f2EstadoFila.indexOf("CUMPLE")    >= 0 ? "#d8f3dc" :
+                    "#f1f3f4"; // Gris = sin F2
+    resumen.getRange(r + 3, 1, 1, encabezados.length).setBackground(colorFila);
     resumen.getRange(r + 3, 7).setFontWeight("bold").setHorizontalAlignment("center");
   }
   // Bordes
