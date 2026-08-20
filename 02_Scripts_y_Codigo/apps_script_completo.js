@@ -612,7 +612,7 @@ function compartirTodosLosDocumentosExistentes() {
 function onFormSubmit_F3(e) {
   try {
     var d         = getFilaDatos("Respuestas de formulario 3");
-    var cedula    = d.safe("Cedula del Candidato");
+    var cedula    = d.safe("Cedula del Candidato") || d.safe("Cedula de Ciudadania") || d.safe("Cedula") || d.safe("C.C");
     var nombre    = d.safe("Nombre Completo del Candidato");
     var prog      = d.safe("Programa / Area del Concurso");
     var perfil    = d.safe("Perfil del Cargo");
