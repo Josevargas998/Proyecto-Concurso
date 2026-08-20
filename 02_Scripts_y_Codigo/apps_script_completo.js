@@ -611,8 +611,16 @@ function compartirTodosLosDocumentosExistentes() {
 // =====================================================================
 function onFormSubmit_F3(e) {
   try {
-    var d         = getFilaDatos("Respuestas de formulario 3");
     var cedula    = d.safe("Cedula del Candidato") || d.safe("Cedula de Ciudadania") || d.safe("Cedula") || d.safe("C.C");
+    if (!cedula) {
+      for (var _k = 0; _k < d.enc.length; _k++) {
+        var _h = String(d.enc[_k] || "").toLowerCase();
+        if (_h.indexOf("cedula") >= 0 || _h.indexOf("c.c") >= 0 || _h.indexOf("identidad") >= 0) {
+          cedula = String(d.fila[_k] || "").trim();
+          if (cedula) break;
+        }
+      }
+    }
     var nombre    = d.safe("Nombre Completo del Candidato");
     var prog      = d.safe("Programa / Area del Concurso");
     var perfil    = d.safe("Perfil del Cargo");
@@ -895,8 +903,11 @@ function onFormSubmit_F3(e) {
 
     ws.setRowHeight(row,65);
     mc(row,1,2,"\n\n____________________________\nFirma del Evaluador\n" + evaluador,CGr,TD,false,9,"center");
-    mc(row,3,3,"\n\n____________________________\nRevisión\nNombre y Firma Miembro Comisión",CGr,TD,false,9,"center");
-    mc(row,4,4,"\n\n____________________________\nVo.Bo. Oficina Asuntos Profesorales",CGr,TD,false,9,"center");
+    mc(row,3,4,"\n\n____________________________\nRevisión\nNombre y Firma Miembro Comisión",CGr,TD,false,9,"center");
+    row++;
+    row++;
+    ws.setRowHeight(row,65);
+    mc(row,1,4,"\n\n____________________________\nVo.Bo. Oficina Asuntos Profesorales",CGr,TD,false,9,"center");
 
     d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ss.getId() + "/edit");
     Logger.log("F3 OK — " + nombre + " — Total: " + pTotal + "/30");
