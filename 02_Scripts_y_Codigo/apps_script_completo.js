@@ -673,10 +673,10 @@ function onFormSubmit_F3(e) {
     compartirArchivo(ss.getId()); // ← Compartir con cualquiera que tenga el enlace
     var ws = ss.getActiveSheet();
     ws.setName("Calificacion HV");
-    ws.setColumnWidth(1, 30);
-    ws.setColumnWidth(2, 340);
-    ws.setColumnWidth(3, 175);
-    ws.setColumnWidth(4, 125);
+    ws.setColumnWidth(1, 10);
+    ws.setColumnWidth(2, 220);
+    ws.setColumnWidth(3, 220);
+    ws.setColumnWidth(4, 220);
 
     // Semáforo dinámico en el Excel
     var CD = semInfo.headerBg;      // Cabecera Principal (Color Oscuro de la Facultad)
