@@ -893,9 +893,10 @@ function onFormSubmit_F3(e) {
     mc(row,1,4,obsGen || "(Sin observaciones)",CGr,TD,false,10,"left"); row++;
     row++;
 
-    ws.setRowHeight(row,55);
+    ws.setRowHeight(row,65);
     mc(row,1,2,"\n\n____________________________\nFirma del Evaluador\n" + evaluador,CGr,TD,false,9,"center");
-    mc(row,3,4,"\n\n____________________________\nVo.Bo. Oficina Asuntos Profesorales",CGr,TD,false,9,"center");
+    mc(row,3,3,"\n\n____________________________\nRevisión\nNombre y Firma Miembro Comisión",CGr,TD,false,9,"center");
+    mc(row,4,4,"\n\n____________________________\nVo.Bo. Oficina Asuntos Profesorales",CGr,TD,false,9,"center");
 
     d.hoja.getRange(d.ult, colEnlace).setValue("https://docs.google.com/spreadsheets/d/" + ss.getId() + "/edit");
     Logger.log("F3 OK — " + nombre + " — Total: " + pTotal + "/30");
