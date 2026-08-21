@@ -1046,7 +1046,8 @@ function onOpen() {
 // (sheetBg es neutro — el color Verde/Rojo de las filas lo maneja F2)
 // =====================================================================
 function obtenerSemaforoPrograma(prog) {
-  var p = String(prog || "").toLowerCase();
+  // Normalizar: quitar tildes y ñ para comparar "Biología" con "biologia", etc.
+  var p = String(prog || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u00f1/g, "n");
   var mapa = [
     { keys: ["educacion", "licenciatura", "pedagogia", "idiomas"],
       facultad: "FACULTAD DE CIENCIAS DE LA EDUCACION",
@@ -1843,9 +1844,11 @@ function getItemsMapping(form) {
   var items = form.getItems();
   var map   = { cedula: null, nombre: null, programa: null, perfil: null };
   for (var i = 0; i < items.length; i++) {
-    var t    = items[i].getTitle().toLowerCase().trim();
+    var tRaw = items[i].getTitle().toLowerCase().trim();
+    // Normalizar: quitar tildes para comparar sin importar acentos
+    var t    = tRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u00f1/g, "n");
     var tipo = items[i].getType();
-    if ((t.indexOf("cedula") !== -1 || t.indexOf("cedula") !== -1) && !map.cedula) {
+    if (t.indexOf("cedula") !== -1 && !map.cedula) {
       map.cedula = items[i];
     } else if (t.indexOf("nombre") !== -1 && t.indexOf("recibe") === -1 &&
                t.indexOf("evaluador") === -1 && t.indexOf("miembro") === -1 && !map.nombre) {
