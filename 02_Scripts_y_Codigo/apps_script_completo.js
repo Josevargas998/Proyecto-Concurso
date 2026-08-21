@@ -92,10 +92,10 @@ function colorearFila(hoja, filaNum, colorHex) {
 // =====================================================================
 // FUNCIONES AUXILIARES
 // =====================================================================
-function getFilaDatos(hojaName) {
+function getFilaDatos(hojaName, filaNum) {
   var ss   = SpreadsheetApp.openById(SS_ID);
   var hoja = ss.getSheetByName(hojaName);
-  var ult  = hoja.getLastRow();
+  var ult  = filaNum || hoja.getLastRow();
   var enc  = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
   var fila = hoja.getRange(ult, 1, 1, hoja.getLastColumn()).getValues()[0];
 
@@ -113,7 +113,8 @@ function getFilaDatos(hojaName) {
     for (var i = 0; i < enc.length; i++) {
       var hNorm = normalizar(enc[i]);
       if (hNorm.indexOf(kNorm) !== -1) {
-        return String(fila[i] || "").trim();
+        var val = String(fila[i] || "").trim();
+        if (val !== "") return val;
       }
     }
     return "";
@@ -610,8 +611,13 @@ function compartirTodosLosDocumentosExistentes() {
 // Genera el documento DESDE CERO sin plantilla.
 // =====================================================================
 function onFormSubmit_F3(e) {
+  var row = (e && e.range) ? e.range.getRow() : null;
+  generarDocumentoF3ParaFila(row);
+}
+
+function generarDocumentoF3ParaFila(filaNum) {
   try {
-    var d         = getFilaDatos("Respuestas de formulario 3");
+    var d         = getFilaDatos("Respuestas de formulario 3", filaNum);
     var cedula    = d.safe("Cedula del Candidato") || d.safe("Cedula de Ciudadania") || d.safe("Cedula") || d.safe("C.C");
     if (!cedula) {
       for (var _k = 0; _k < d.enc.length; _k++) {
@@ -919,6 +925,41 @@ function onFormSubmit_F3(e) {
   } catch(err) { Logger.log("Error F3: " + err); }
 }
 
+function procesarDocumentosF3Faltantes() {
+  var ss   = SpreadsheetApp.openById(SS_ID);
+  var hoja = ss.getSheetByName("Respuestas de formulario 3");
+  if (!hoja) {
+    SpreadsheetApp.getUi().alert("No se encontro la hoja 'Respuestas de formulario 3'");
+    return;
+  }
+  var ult = hoja.getLastRow();
+  if (ult < 2) {
+    SpreadsheetApp.getUi().alert("No hay respuestas registradas en Formulario 3.");
+    return;
+  }
+
+  var dAux = getFilaDatos("Respuestas de formulario 3", 1);
+  var colEnlace = dAux.getColIndex("Enlace Documento");
+  if (colEnlace === -1) {
+    colEnlace = hoja.getLastColumn() + 1;
+    hoja.getRange(1, colEnlace).setValue("Enlace Documento");
+  }
+
+  var generados = 0;
+  for (var r = 2; r <= ult; r++) {
+    var valLink = String(hoja.getRange(r, colEnlace).getValue() || "").trim();
+    if (!valLink || valLink.indexOf("http") === -1) {
+      try {
+        generarDocumentoF3ParaFila(r);
+        generados++;
+      } catch(ex) {
+        Logger.log("Error procesando F3 fila " + r + ": " + ex);
+      }
+    }
+  }
+  SpreadsheetApp.getUi().alert("📄 Proceso completado.\nSe generaron los documentos y enlaces F3 para " + generados + " registro(s) pendiente(s).");
+}
+
 
 
 // =====================================================================
@@ -1038,6 +1079,7 @@ function onOpen() {
     .addItem("🎨 Colorear semáforo (Verde = Cumple, Rojo = No Cumple)", "colorearTodoSemaforoCumplimiento")
     .addItem("🧹 Limpiar columnas duplicadas",               "limpiarColumnasBasura")
     .addItem("📊 Actualizar Hoja Resumen de Candidatos",     "actualizarHojaResumen")
+    .addItem("📄 Generar documentos F3 pendientes",          "procesarDocumentosF3Faltantes")
     .addItem("🔓 Compartir todos los docs con editores",     "compartirTodosLosDocumentosExistentes")
     .addToUi();
 }
