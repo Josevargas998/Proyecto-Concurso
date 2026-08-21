@@ -611,6 +611,7 @@ function compartirTodosLosDocumentosExistentes() {
 // =====================================================================
 function onFormSubmit_F3(e) {
   try {
+    var d         = getFilaDatos("Respuestas de formulario 3");
     var cedula    = d.safe("Cedula del Candidato") || d.safe("Cedula de Ciudadania") || d.safe("Cedula") || d.safe("C.C");
     if (!cedula) {
       for (var _k = 0; _k < d.enc.length; _k++) {
