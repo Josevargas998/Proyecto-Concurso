@@ -611,8 +611,7 @@ function compartirTodosLosDocumentosExistentes() {
 // Genera el documento DESDE CERO sin plantilla.
 // =====================================================================
 function onFormSubmit_F3(e) {
-  var row = (e && e.range) ? e.range.getRow() : null;
-  generarDocumentoF3ParaFila(row);
+  generarDocumentoF3ParaFila(null);
 }
 
 function generarDocumentoF3ParaFila(filaNum) {
